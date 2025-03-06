@@ -19,6 +19,6 @@ with open(FILE_PATH, "r") as f:
 
 def main(args=None):
     rclpy.init(args=args)
-    node = TelloNode(Tello())
+    node = TelloNode()
     rclpy.spin(node)
     rclpy.shutdown()
