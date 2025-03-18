@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'tello'
+package_name = 'djitello'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "tellos = tello.main:main"
+            "init = tello.main:main"
         ],
     },
 )
