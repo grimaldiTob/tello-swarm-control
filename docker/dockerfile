@@ -12,7 +12,7 @@ SHELL [ "/bin/bash", "-c" ]
 COPY djitello ./djitello
 RUN virtualenv myenv
 RUN source ${WS}/myenv/bin/activate
-# RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt
 # RUN echo "source $WS/myenv/bin/activate && pip install -r requirements.txt" >> ~/.bashrc
 RUN source /opt/ros/jazzy/setup.bash
 # esegui colcon build in /ws 

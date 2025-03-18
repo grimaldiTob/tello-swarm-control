@@ -20,8 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            "tellos = tello.tello:main", 
-            "controller = tello.controller:main"
+            "tellos = tello.main:main"
         ],
     },
 )
