@@ -1,0 +1,26 @@
+{
+  "type_description_msg": {
+    "type_description": {
+      "type_name": "custom_msgs/srv/StringCommand_Response",
+      "fields": [
+        {
+          "name": "code",
+          "type": {
+            "type_id": 15,
+            "capacity": 0,
+            "string_capacity": 0,
+            "nested_type_name": ""
+          },
+          "default_value": ""
+        }
+      ]
+    },
+    "referenced_type_descriptions": []
+  },
+  "type_hashes": [
+    {
+      "type_name": "custom_msgs/srv/StringCommand_Response",
+      "hash_string": "RIHS01_45024b134222846f11f8b32adcbcf51e4b2965a00648d9f8783d041c320de223"
+    }
+  ]
+}

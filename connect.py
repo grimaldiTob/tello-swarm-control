@@ -65,6 +65,3 @@ def connect_to_wifi():
         tello.end()
     except Exception as e:
         print("Errore")
-
-
-#connect_to_wifi()

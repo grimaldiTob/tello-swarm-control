@@ -1,0 +1,42 @@
+running egg_info
+creating ../../build/djitello/djitello.egg-info
+writing ../../build/djitello/djitello.egg-info/PKG-INFO
+writing dependency_links to ../../build/djitello/djitello.egg-info/dependency_links.txt
+writing entry points to ../../build/djitello/djitello.egg-info/entry_points.txt
+writing requirements to ../../build/djitello/djitello.egg-info/requires.txt
+writing top-level names to ../../build/djitello/djitello.egg-info/top_level.txt
+writing manifest file '../../build/djitello/djitello.egg-info/SOURCES.txt'
+reading manifest file '../../build/djitello/djitello.egg-info/SOURCES.txt'
+writing manifest file '../../build/djitello/djitello.egg-info/SOURCES.txt'
+running build
+running build_py
+creating /home/tobia/vsc/tello_swarm/build/djitello/build
+creating /home/tobia/vsc/tello_swarm/build/djitello/build/lib
+creating /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+copying tello/controller_node.py -> /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+copying tello/__init__.py -> /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+copying tello/tello_node.py -> /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+copying tello/main.py -> /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+running install
+running install_lib
+creating /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+copying /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello/controller_node.py -> /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+copying /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello/__init__.py -> /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+copying /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello/tello_node.py -> /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+copying /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello/main.py -> /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+byte-compiling /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello/controller_node.py to controller_node.cpython-312.pyc
+byte-compiling /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello/__init__.py to __init__.cpython-312.pyc
+byte-compiling /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello/tello_node.py to tello_node.cpython-312.pyc
+byte-compiling /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello/main.py to main.cpython-312.pyc
+running install_data
+creating /home/tobia/vsc/tello_swarm/install/djitello/share/ament_index
+creating /home/tobia/vsc/tello_swarm/install/djitello/share/ament_index/resource_index
+creating /home/tobia/vsc/tello_swarm/install/djitello/share/ament_index/resource_index/packages
+copying resource/djitello -> /home/tobia/vsc/tello_swarm/install/djitello/share/ament_index/resource_index/packages
+copying package.xml -> /home/tobia/vsc/tello_swarm/install/djitello/share/djitello
+running install_egg_info
+Copying ../../build/djitello/djitello.egg-info to /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/djitello-0.0.0-py3.12.egg-info
+running install_scripts
+Installing controller script to /home/tobia/vsc/tello_swarm/install/djitello/lib/djitello
+Installing tello script to /home/tobia/vsc/tello_swarm/install/djitello/lib/djitello
+writing list of installed files to '/home/tobia/vsc/tello_swarm/build/djitello/install.log'

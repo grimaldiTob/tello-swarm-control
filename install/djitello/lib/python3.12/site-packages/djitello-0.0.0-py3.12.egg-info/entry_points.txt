@@ -1,0 +1,3 @@
+[console_scripts]
+controller = tello.controller_node:main
+tello = tello.tello_node:main

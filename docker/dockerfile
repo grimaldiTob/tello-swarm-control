@@ -3,13 +3,13 @@ FROM ros:humble
 RUN apt-get update && apt-get install -y python3-pip && \
     apt install python3-colcon-common-extensions
 
-ENV WS=/ws/src
+ENV WS=/ws
 RUN test -d ${WS} || mkdir -pv ${WS}
 WORKDIR ${WS}
 SHELL [ "/bin/bash", "-c" ]
 
-COPY djitello ./djitello
-RUN pip install -r djitello/requirements.txt
+COPY src ./src
+RUN pip install -r src/djitello/requirements.txt
 # RUN echo "source $WS/myenv/bin/activate && pip install -r requirements.txt" >> ~/.bashrc
 RUN source /opt/ros/humble/setup.bash
 # esegui colcon build in /ws 

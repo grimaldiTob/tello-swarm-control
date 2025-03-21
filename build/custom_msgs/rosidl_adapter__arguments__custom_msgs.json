@@ -1,0 +1,6 @@
+{
+  "package_name": "custom_msgs",
+  "non_idl_tuples": [
+    "/home/tobia/vsc/tello_swarm/src/custom_msgs:srv/StringCommand.srv"
+  ]
+}

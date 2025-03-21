@@ -1,0 +1,15 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from custom_msgs/srv/StringCommand.srv
+// generated code does not contain a copyright notice
+
+
+module custom_msgs {
+  module srv {
+    struct StringCommand_Request {
+      string command;
+    };
+    struct StringCommand_Response {
+      boolean code;
+    };
+  };
+};

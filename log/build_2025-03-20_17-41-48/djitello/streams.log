@@ -1,0 +1,44 @@
+[0.580s] Invoking command in '/home/tobia/vsc/tello_swarm/src/djitello': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/tobia/vsc/tello_swarm/build/djitello/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/djitello build --build-base /home/tobia/vsc/tello_swarm/build/djitello/build install --record /home/tobia/vsc/tello_swarm/build/djitello/install.log --single-version-externally-managed install_data
+[0.736s] running egg_info
+[0.736s] creating ../../build/djitello/djitello.egg-info
+[0.745s] writing ../../build/djitello/djitello.egg-info/PKG-INFO
+[0.745s] writing dependency_links to ../../build/djitello/djitello.egg-info/dependency_links.txt
+[0.745s] writing entry points to ../../build/djitello/djitello.egg-info/entry_points.txt
+[0.746s] writing requirements to ../../build/djitello/djitello.egg-info/requires.txt
+[0.746s] writing top-level names to ../../build/djitello/djitello.egg-info/top_level.txt
+[0.746s] writing manifest file '../../build/djitello/djitello.egg-info/SOURCES.txt'
+[0.766s] reading manifest file '../../build/djitello/djitello.egg-info/SOURCES.txt'
+[0.766s] writing manifest file '../../build/djitello/djitello.egg-info/SOURCES.txt'
+[0.766s] running build
+[0.766s] running build_py
+[0.766s] creating /home/tobia/vsc/tello_swarm/build/djitello/build
+[0.766s] creating /home/tobia/vsc/tello_swarm/build/djitello/build/lib
+[0.766s] creating /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+[0.766s] copying tello/controller_node.py -> /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+[0.766s] copying tello/__init__.py -> /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+[0.766s] copying tello/tello_node.py -> /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+[0.766s] copying tello/main.py -> /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello
+[0.766s] running install
+[0.771s] running install_lib
+[0.781s] creating /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+[0.781s] copying /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello/controller_node.py -> /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+[0.781s] copying /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello/__init__.py -> /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+[0.781s] copying /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello/tello_node.py -> /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+[0.781s] copying /home/tobia/vsc/tello_swarm/build/djitello/build/lib/tello/main.py -> /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello
+[0.781s] byte-compiling /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello/controller_node.py to controller_node.cpython-312.pyc
+[0.782s] byte-compiling /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello/__init__.py to __init__.cpython-312.pyc
+[0.782s] byte-compiling /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello/tello_node.py to tello_node.cpython-312.pyc
+[0.782s] byte-compiling /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/tello/main.py to main.cpython-312.pyc
+[0.782s] running install_data
+[0.782s] creating /home/tobia/vsc/tello_swarm/install/djitello/share/ament_index
+[0.782s] creating /home/tobia/vsc/tello_swarm/install/djitello/share/ament_index/resource_index
+[0.782s] creating /home/tobia/vsc/tello_swarm/install/djitello/share/ament_index/resource_index/packages
+[0.783s] copying resource/djitello -> /home/tobia/vsc/tello_swarm/install/djitello/share/ament_index/resource_index/packages
+[0.783s] copying package.xml -> /home/tobia/vsc/tello_swarm/install/djitello/share/djitello
+[0.783s] running install_egg_info
+[0.793s] Copying ../../build/djitello/djitello.egg-info to /home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages/djitello-0.0.0-py3.12.egg-info
+[0.794s] running install_scripts
+[0.867s] Installing controller script to /home/tobia/vsc/tello_swarm/install/djitello/lib/djitello
+[0.867s] Installing tello script to /home/tobia/vsc/tello_swarm/install/djitello/lib/djitello
+[0.867s] writing list of installed files to '/home/tobia/vsc/tello_swarm/build/djitello/install.log'
+[0.885s] Invoked command in '/home/tobia/vsc/tello_swarm/src/djitello' returned '0': DEBUGINFOD_URLS=https://debuginfod.ubuntu.com PYTHONPATH=/home/tobia/vsc/tello_swarm/build/djitello/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/tobia/vsc/tello_swarm/install/djitello/lib/python3.12/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/djitello build --build-base /home/tobia/vsc/tello_swarm/build/djitello/build install --record /home/tobia/vsc/tello_swarm/build/djitello/install.log --single-version-externally-managed install_data
