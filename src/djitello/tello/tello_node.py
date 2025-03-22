@@ -15,7 +15,6 @@ class TelloNode(Node):
         self.tello = Tello(self.get_parameter("tello_ip").value)
         self.ip = self.get_parameter('tello_ip').value
         self.id = self.get_parameter("id").value
-        self.get_logger().info(f"Parameter Ip is : {self.ip}")
         self.get_logger().info(f"Tello initialized with IP address: {self.tello.address[0]}")
         self.srv = self.create_service(StringCommand, "/tello" + self.id, self.srv_command)
         self.controller_cmd = self.create_subscription(String, "/Command/tello" + self.id, self.ctrl_command, 10)
@@ -31,15 +30,17 @@ class TelloNode(Node):
     
     def srv_command(self, request, response):
         #self.tello.send_control_command(request.command)
-        self.get_logger().info(f"Received command by the tello: {request.data}")
-        return response.code
+        self.get_logger().info(f"Received command by the tello: {request.command}")
+        response.code = True
+        return response
 
 
 def main():
     rclpy.init()
     node = TelloNode()
-    while rclpy.ok():
-        rclpy.spin_once(node)
+    #while rclpy.ok():
+    #   rclpy.spin_once(node)
+    rclpy.spin(node)
     rclpy.shutdown()
 
 

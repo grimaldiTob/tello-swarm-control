@@ -1,0 +1,9 @@
+## CHIAMA IL SERVIZIO ROS2 IN CUI INVIAMO IL COMANDO
+ros2 service call /tello1 custom_msgs/srv/StringCommand "{command: 'takeoff'}"
+
+ros2 launch launch.py
+
+## INIZIALIZZA UN CONTAINER PER INVIARE COMANDI
+docker run -it --rm --network=host --ipc=host \
+    -v $PWD/src/djitello/:/ws/src/djitello/ \
+    my_ros_image /bin/bash
