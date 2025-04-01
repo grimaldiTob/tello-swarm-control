@@ -12,6 +12,7 @@ class SwarmNode(Node):
         self.get_logger().info("Controller Initialized!")
 
         self.positions = []
+        self.targets = []
 
         # Init publishers and subscribers
         self.init_publishers()
