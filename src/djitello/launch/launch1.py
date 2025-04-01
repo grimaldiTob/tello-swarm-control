@@ -6,10 +6,7 @@ def generate_launch_description():
         launch_ros.actions.Node(
             package='djitello',
             executable='tello',  
-            name='tello1',
-            parameters=[
-                {'tello_ip': '192.168.16.112', 'id': '1'}
-            ]
+            name= 'tello1'
         ),
         launch_ros.actions.Node(
             package='djitello',

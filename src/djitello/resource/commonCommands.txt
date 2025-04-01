@@ -1,5 +1,7 @@
 ## CHIAMA IL SERVIZIO ROS2 IN CUI INVIAMO IL COMANDO
-ros2 service call /tello1 custom_msgs/srv/StringCommand "{command: 'takeoff'}"
+ros2 service call /tello1 custom_msgs/srv/StringCommand "{command: 'takeoff'}" & \
+ros2 service call /tello2 custom_msgs/srv/StringCommand "{command: 'takeoff'}" &
+
 
 ros2 launch launch.py
 
