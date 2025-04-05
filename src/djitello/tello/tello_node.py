@@ -1,14 +1,15 @@
-from djitellopy import Tello
+from djitellopy import Tello, TelloException
+import rclpy
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import String
 from geometry_msgs.msg import Pose, PoseStamped
 from custom_msgs.srv import StringCommand
 from custom_msgs.msg import TelloStatus
-from rclpy.executors import MultiThreadedExecutor
-import rclpy
-import threading
+from std_srvs.srv import Trigger
 from controllers.PID_controller import PIDController
 import math
+import time
 
 
 class TelloNode(Node):
@@ -46,6 +47,8 @@ class TelloNode(Node):
 
     def setup_services(self):
         self.srv = self.create_service(StringCommand, "/tello" + self.id, self.srv_command)
+        self.srv = self.create_service(Trigger, "/tello" + self.id + "/takeoff", self.takeoff_srv)
+        self.srv = self.create_service(Trigger, "/tello" + self.id + "/land", self.land_srv)
 
     def setup_PID(self):
         self.PIDx = PIDController('x')
@@ -54,15 +57,6 @@ class TelloNode(Node):
         self.PIDx.set_PID_safeopt([0.57531093, 0.02, 0.17326167])
         self.PIDy.set_PID_safeopt([0.7, 0.02, 0.27326167])
         self.PIDz.set_PID_safeopt([0.5, 0.02, 0.15])
-
-    def compute_error(self):
-        euler = self.quaternion_to_euler()
-        yaw = euler[0]
-        error_x = float((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))
-        error_y = float(-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))
-        error_z = float(self.target[2] - self.tello_pose[2])
-        error_yaw = float(-yaw)
-        self.tello.send_rc_control(error_x, error_y, error_z, error_yaw)
 
     def set_pose(self, msg:PoseStamped):
         # setting the tello pose received by the vicon
@@ -73,27 +67,67 @@ class TelloNode(Node):
                                  msg.pose.orientation.y,
                                  msg.pose.orientation.z,
                                  msg.pose.orientation.w)
+        
+        # calculating errors
+        self.elaborate_position()
 
         # creating the Status object
         status = TelloStatus()
         status.stamped = msg
         status.id = self.id
-        self.status_publisher.publish(status) #publish status
+        self.status_publisher.publish(status) #publish status    
+
+    def elaborate_position(self):
+        euler = self.quaternion_to_euler()
+        yaw = euler[0]
+        error_x = float((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))
+        error_y = float(-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))
+        error_z = float(self.target[2] - self.tello_pose[2])
+        error_yaw = float(-yaw)
+        
+        # compute action
+        action_x = int(self.PIDx.compute_action(error_x))
+        action_y = int(self.PIDy.compute_action(error_y))
+        action_z = int(self.PIDz.compute_action(error_z))
+        self.tello.send_rc_control(action_y,action_x, action_z, error_yaw)
 
     def ctrl_command(self, msg: String):
         self.tello.send_control_command(msg.data)
         self.get_logger().info(f"Received command by the tello: {msg.data}")
     
     def srv_command(self, request, response):
-        if request.command == "takeoff":
-            self.tello.takeoff()
-        elif request.command == "land":
-            self.tello.land()
-        else:
+        try:
+            self.get_logger().info(f"Received command by the tello{self.id}: {request.command}")
             self.tello.send_control_command(request.command)
-        response.code = True
-        self.get_logger().info(f"Received command by the tello{self.id}: {request.command}")
+            response.code = True
+        except TelloException:
+            self.get_logger().info(f"Error received by the tello{self.id}")
+            response.code = False
         return response
+    
+    def takeoff_srv(self, trig:Trigger):
+        if self.battery_check():
+            self.tello.takeoff()
+            return {'success': True,'message' : "Taking off"}
+        else:
+            return {'success': False,'message' : "Error"}
+
+    def land_srv(self, trig:Trigger):
+        self.tello.send_rc_control("rc 0 0 0 0")
+        self.tello.land()
+        return {"success":True, "message": "Landing..."}
+
+    def battery_check(self):
+        bat = int(self.tello.get_battery())
+        time.sleep(0.1)
+        if bat > 10:
+            self.get_logger().info(f"Battery is at {bat}%")
+            return True
+        else:
+            self.get_logger().info(f"Battery is too low. Recharge")
+            return False
+    
+
 
     def quaternion_to_euler(self):
         (x, y, z, w) = self.tello_quaternion
