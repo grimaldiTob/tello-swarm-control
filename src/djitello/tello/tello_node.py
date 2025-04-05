@@ -3,13 +3,14 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import String
-from geometry_msgs.msg import Pose, PoseStamped
+from geometry_msgs.msg import Point, PoseStamped
 from custom_msgs.srv import StringCommand
 from custom_msgs.msg import TelloStatus
 from std_srvs.srv import Trigger
 from controllers.PID_controller import PIDController
 import math
 import time
+import numpy as np
 
 
 class TelloNode(Node):
@@ -42,7 +43,7 @@ class TelloNode(Node):
         self.status_publisher = self.create_publisher(TelloStatus, "/Tello"+ self.id + "/pose", 10)
     
     def setup_subscribers(self):
-        self.controller_cmd = self.create_subscription(String, "/tello" + self.id + "/cmd", self.ctrl_command, 10)
+        self.controller_cmd = self.create_subscription(Point, "/tello" + self.id + "/target", self.target_change, 10)
         self.viconState = self.create_subscription(PoseStamped, "/vicon/Tello_" + self.id + "/Tello_" + self.id, self.set_pose, 10)
 
     def setup_services(self):
@@ -73,13 +74,18 @@ class TelloNode(Node):
 
         # creating the Status object
         status = TelloStatus()
-        status.stamped = msg
+        noise_pos = self.add_gaussian_noise(self.tello_pose, 0)
+        status.x = noise_pos[0]
+        status.y = noise_pos[1]
+        status.z = noise_pos[2]
         status.id = self.id
         self.status_publisher.publish(status) #publish status    
 
     def elaborate_position(self):
         euler = self.quaternion_to_euler()
         yaw = euler[0]
+
+        #calculating errors
         error_x = float((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))
         error_y = float(-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))
         error_z = float(self.target[2] - self.tello_pose[2])
@@ -91,9 +97,11 @@ class TelloNode(Node):
         action_z = int(self.PIDz.compute_action(error_z))
         self.tello.send_rc_control(action_y,action_x, action_z, error_yaw)
 
-    def ctrl_command(self, msg: String):
-        self.tello.send_control_command(msg.data)
-        self.get_logger().info(f"Received command by the tello: {msg.data}")
+    def target_change(self, msg: Point):
+        self.target[0] = msg.x
+        self.target[1] = msg.y
+        self.target[2] = msg.z
+        self.get_logger().info(f"Target changed to {self.target.__str__}")
     
     def srv_command(self, request, response):
         try:
@@ -127,8 +135,6 @@ class TelloNode(Node):
             self.get_logger().info(f"Battery is too low. Recharge")
             return False
     
-
-
     def quaternion_to_euler(self):
         (x, y, z, w) = self.tello_quaternion
         t0 = +2.0 * (w * x + y * z)
@@ -142,6 +148,12 @@ class TelloNode(Node):
         t4 = +1.0 - 2.0 * (y * y + z * z)
         yaw = math.atan2(t3, t4)
         return [yaw, pitch, roll]
+
+    def add_gaussian_noise(measurement, variance):
+        std_dev = np.sqrt(variance)
+        noise = np.random.normal(loc=0.0, scale=std_dev, size=np.shape(measurement))
+        return measurement + noise
+
 
 def main():
     rclpy.init()
