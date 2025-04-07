@@ -38,6 +38,7 @@ class TelloNode(Node):
         self.setup_PID()
 
         #self.tello.connect()
+        self.timer = self.create_timer(0.1, self.timer_callback)
 
     def setup_publishers(self):
         self.status_publisher = self.create_publisher(TelloStatus, "/Tello"+ self.id + "/pose", 10)
@@ -69,9 +70,7 @@ class TelloNode(Node):
                                  msg.pose.orientation.z,
                                  msg.pose.orientation.w)
         
-        # calculating errors
-        self.elaborate_position()
-
+        
         # creating the Status object
         status = TelloStatus()
         noise_pos = self.add_gaussian_noise(self.tello_pose, 0)
@@ -102,6 +101,10 @@ class TelloNode(Node):
         self.target[1] = msg.y
         self.target[2] = msg.z
         self.get_logger().info(f"Target changed to {self.target.__str__}")
+
+        # calculating errors
+        self.elaborate_position()
+
     
     def srv_command(self, request, response):
         try:
