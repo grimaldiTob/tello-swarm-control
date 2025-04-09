@@ -21,8 +21,8 @@ class TelloNode(Node):
         #parameters
         self.ip = ip
         self.id = str(id)
-        self.tello_pose = ()
-        self.tello_quaternion = ()
+        self.tello_pose = [0, 0, 0]
+        self.tello_quaternion = [0, 0, 0, 0] # valori di default
         self.target = [0, 0, 0]
 
         #setup Tello
@@ -38,7 +38,7 @@ class TelloNode(Node):
         self.setup_PID()
 
         #self.tello.connect()
-        self.timer = self.create_timer(0.1, self.timer_callback)
+        self.timer = self.create_timer(5, self.send_status)
 
     def setup_publishers(self):
         self.status_publisher = self.create_publisher(TelloStatus, "/Tello"+ self.id + "/pose", 10)
@@ -62,27 +62,42 @@ class TelloNode(Node):
 
     def set_pose(self, msg:PoseStamped):
         # setting the tello pose received by the vicon
-        self.tello_pose = (msg.pose.position.x,
+        self.tello_pose = [msg.pose.position.x,
                            msg.pose.position.y,
-                           msg.pose.position.z)
-        self.tello_quaternion = (msg.pose.orientation.x,
+                           msg.pose.position.z]
+        self.tello_quaternion = [msg.pose.orientation.x,
                                  msg.pose.orientation.y,
                                  msg.pose.orientation.z,
-                                 msg.pose.orientation.w)
+                                 msg.pose.orientation.w]
         
         
+    def send_status(self):
         # creating the Status object
         status = TelloStatus()
-        noise_pos = self.add_gaussian_noise(self.tello_pose, 0)
+        meas = np.array(self.tello_pose)
+        noise_pos= TelloNode.add_gaussian_noise(meas, 0.1)
+        self.get_logger().info(f"Received for {meas.tolist()} noise values {noise_pos.tolist()}")
+        noise_pos = meas + noise_pos
         status.x = noise_pos[0]
         status.y = noise_pos[1]
         status.z = noise_pos[2]
-        status.id = self.id
-        self.status_publisher.publish(status) #publish status    
+        status.id = int(self.id)
+        self.status_publisher.publish(status) #publish status  
+        self.get_logger().info("Sent status to the controller")
 
+    def target_change(self, msg: Point):
+        self.target[0] = msg.x
+        self.target[1] = msg.y
+        self.target[2] = msg.z
+        self.get_logger().info(f"Target changed to {self.target}")
+
+        # calculating errors
+        self.elaborate_position()
+    
     def elaborate_position(self):
         euler = self.quaternion_to_euler()
         yaw = euler[0]
+        self.get_logger().info(f"Yaw calculated: {yaw}")
 
         #calculating errors
         error_x = float((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))
@@ -94,16 +109,7 @@ class TelloNode(Node):
         action_x = int(self.PIDx.compute_action(error_x))
         action_y = int(self.PIDy.compute_action(error_y))
         action_z = int(self.PIDz.compute_action(error_z))
-        self.tello.send_rc_control(action_y,action_x, action_z, error_yaw)
-
-    def target_change(self, msg: Point):
-        self.target[0] = msg.x
-        self.target[1] = msg.y
-        self.target[2] = msg.z
-        self.get_logger().info(f"Target changed to {self.target.__str__}")
-
-        # calculating errors
-        self.elaborate_position()
+        #self.tello.send_rc_control(action_y,action_x, action_z, error_yaw)
 
     
     def srv_command(self, request, response):
@@ -151,11 +157,12 @@ class TelloNode(Node):
         t4 = +1.0 - 2.0 * (y * y + z * z)
         yaw = math.atan2(t3, t4)
         return [yaw, pitch, roll]
-
+    
+    @staticmethod
     def add_gaussian_noise(measurement, variance):
         std_dev = np.sqrt(variance)
         noise = np.random.normal(loc=0.0, scale=std_dev, size=np.shape(measurement))
-        return measurement + noise
+        return noise
 
 
 def main():
@@ -173,14 +180,5 @@ def main():
         node1.destroy_node()
         node2.destroy_node()
         rclpy.shutdown()
-
-
-    """rclpy.spin(node1)
-    rclpy.spin(node2)
-    node1.destroy_node()
-    node2.destroy_node()
-    rclpy.shutdown()"""
-
-
 
 

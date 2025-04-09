@@ -27,7 +27,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(custom_msgs
-  "srv/setPoint.srv"
+  "srv/SetPoint.srv"
   "msg/TelloStatus.msg"
   "srv/StringCommand.srv"
   DEPENDENCIES geometry_msgs # Add packages that above messages depend on, in this case geometry_msgs for Sphere.msg
