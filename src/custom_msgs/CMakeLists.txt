@@ -27,6 +27,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(custom_msgs
+  "srv/Variance.srv"
   "srv/SetPoint.srv"
   "msg/TelloStatus.msg"
   "srv/StringCommand.srv"

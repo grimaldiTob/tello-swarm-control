@@ -1,6 +1,14 @@
 ## CHIAMA IL SERVIZIO ROS2 IN CUI INVIAMO IL COMANDO
-ros2 service call /tello1 custom_msgs/srv/StringCommand "{command: 'takeoff'}" & \
-ros2 service call /tello2 custom_msgs/srv/StringCommand "{command: 'takeoff'}" &
+ros2 service call /tello1/variance custom_msgs/srv/Variance "{variance: 0.5}" & \
+ros2 service call /tello2/variance custom_msgs/srv/Variance "{variance: 0.1}" &
+
+ros2 service call /tello1/takeoff std_srvs/srv/Trigger & \
+ros2 service call /tello1/land std_srvs/srv/Trigger &
+
+ros2 service call /tello2/takeoff std_srvs/srv/Trigger & \
+ros2 service call /tello2/land std_srvs/srv/Trigger &
+
+
 
 
 ros2 launch launch.py

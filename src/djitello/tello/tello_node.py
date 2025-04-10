@@ -4,7 +4,7 @@ from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import String
 from geometry_msgs.msg import Point, PoseStamped
-from custom_msgs.srv import StringCommand
+from custom_msgs.srv import StringCommand, Variance
 from custom_msgs.msg import TelloStatus
 from std_srvs.srv import Trigger
 from controllers.PID_controller import PIDController
@@ -24,6 +24,7 @@ class TelloNode(Node):
         self.tello_pose = [0, 0, 0]
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
         self.target = [0, 0, 0]
+        self.variance = 0 # varianza di default settata a 0
 
         #setup Tello
         self.tello = Tello(self.ip)
@@ -48,9 +49,10 @@ class TelloNode(Node):
         self.viconState = self.create_subscription(PoseStamped, "/vicon/Tello_" + self.id + "/Tello_" + self.id, self.set_pose, 10)
 
     def setup_services(self):
-        self.srv = self.create_service(StringCommand, "/tello" + self.id, self.srv_command)
-        self.srv = self.create_service(Trigger, "/tello" + self.id + "/takeoff", self.takeoff_srv)
-        self.srv = self.create_service(Trigger, "/tello" + self.id + "/land", self.land_srv)
+        self.cmd_srv = self.create_service(StringCommand, "/tello" + self.id, self.srv_command)
+        self.tkf_srv = self.create_service(Trigger, "/tello" + self.id + "/takeoff", self.takeoff_srv)
+        self.lnd_srv = self.create_service(Trigger, "/tello" + self.id + "/land", self.land_srv)
+        self.var_srv = self.create_service(Variance, "/tello" + self.id + "/variance", self.set_variance)
 
     def setup_PID(self):
         self.PIDx = PIDController('x')
@@ -75,7 +77,7 @@ class TelloNode(Node):
         # creating the Status object
         status = TelloStatus()
         meas = np.array(self.tello_pose)
-        noise_pos= TelloNode.add_gaussian_noise(meas, 0.1)
+        noise_pos= self.add_gaussian_noise(meas)
         self.get_logger().info(f"Received for {meas.tolist()} noise values {noise_pos.tolist()}")
         noise_pos = meas + noise_pos
         status.x = noise_pos[0]
@@ -133,6 +135,12 @@ class TelloNode(Node):
         self.tello.send_rc_control("rc 0 0 0 0")
         self.tello.land()
         return {"success":True, "message": "Landing..."}
+    
+    def set_variance(self, request, response):
+        var = request.variance
+        self.variance = var
+        response.data =  True
+        return response
 
     def battery_check(self):
         bat = int(self.tello.get_battery())
@@ -158,9 +166,8 @@ class TelloNode(Node):
         yaw = math.atan2(t3, t4)
         return [yaw, pitch, roll]
     
-    @staticmethod
-    def add_gaussian_noise(measurement, variance):
-        std_dev = np.sqrt(variance)
+    def add_gaussian_noise(self, measurement):
+        std_dev = np.sqrt(self.variance)
         noise = np.random.normal(loc=0.0, scale=std_dev, size=np.shape(measurement))
         return noise
 
