@@ -1,5 +1,4 @@
 from rclpy.node import Node
-from std_msgs.msg import String
 from geometry_msgs.msg import Point
 from custom_msgs.msg import TelloStatus
 from custom_msgs.srv import SetPoint
@@ -21,12 +20,11 @@ class SwarmNode(Node):
         self.init_subscribers()
         self.init_service()
 
-        self.timer = self.create_timer(6, self.compute_target)
+        self.timer = self.create_timer(3, self.compute_target)
 
 
     def init_subscribers(self):
-        self.sub1 = self.create_subscription(TelloStatus, "/Tello1/pose", self.check_position, 10)
-        self.sub2 = self.create_subscription(TelloStatus, "/Tello2/pose", self.check_position, 10)
+        self.sub = self.create_subscription(TelloStatus, "/Tello/pose", self.check_position, 10)
 
     def init_publishers(self):
         self.publ1 = self.create_publisher(Point, "/tello1/target", 10)

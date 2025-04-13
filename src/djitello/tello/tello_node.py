@@ -23,7 +23,7 @@ class TelloNode(Node):
         self.id = str(id)
         self.tello_pose = [0, 0, 0]
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
-        self.target = [0, 0, 0]
+        self.target = [1.0, 0.5, 0.3]
         self.variance = 0 # varianza di default settata a 0
 
         #setup Tello
@@ -38,11 +38,11 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        #self.tello.connect()
-        self.timer = self.create_timer(5, self.send_status)
+        self.tello.connect()
+        self.timer = self.create_timer(0.2, self.elaborate_position)
 
     def setup_publishers(self):
-        self.status_publisher = self.create_publisher(TelloStatus, "/Tello"+ self.id + "/pose", 10)
+        self.status_publisher = self.create_publisher(TelloStatus, "/Tello" + "/pose", 10)
     
     def setup_subscribers(self):
         self.controller_cmd = self.create_subscription(Point, "/tello" + self.id + "/target", self.target_change, 10)
@@ -59,8 +59,8 @@ class TelloNode(Node):
         self.PIDy = PIDController('y')
         self.PIDz = PIDController('z')
         self.PIDx.set_PID_safeopt([0.57531093, 0.02, 0.17326167])
-        self.PIDy.set_PID_safeopt([0.7, 0.02, 0.27326167])
-        self.PIDz.set_PID_safeopt([0.5, 0.02, 0.15])
+        self.PIDy.set_PID_safeopt([0.5, 0.02, 0.15])
+        self.PIDz.set_PID_safeopt([0.7, 0.02, 0.27326167])
 
     def set_pose(self, msg:PoseStamped):
         # setting the tello pose received by the vicon
@@ -71,7 +71,6 @@ class TelloNode(Node):
                                  msg.pose.orientation.y,
                                  msg.pose.orientation.z,
                                  msg.pose.orientation.w]
-        
         
     def send_status(self):
         # creating the Status object
@@ -97,21 +96,23 @@ class TelloNode(Node):
         self.elaborate_position()
     
     def elaborate_position(self):
-        euler = self.quaternion_to_euler()
-        yaw = euler[0]
-        self.get_logger().info(f"Yaw calculated: {yaw}")
+        if self.tello.is_flying:
+            euler = self.quaternion_to_euler()
+            yaw = euler[0]
+            self.get_logger().info(f"Yaw calculated: {yaw}")
 
-        #calculating errors
-        error_x = float((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))
-        error_y = float(-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))
-        error_z = float(self.target[2] - self.tello_pose[2])
-        error_yaw = float(-yaw)
-        
-        # compute action
-        action_x = int(self.PIDx.compute_action(error_x))
-        action_y = int(self.PIDy.compute_action(error_y))
-        action_z = int(self.PIDz.compute_action(error_z))
-        #self.tello.send_rc_control(action_y,action_x, action_z, error_yaw)
+            #calculating errors
+            error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*50)
+            error_y = float(((self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*50)
+            error_z = float((self.target[2] - self.tello_pose[2])*50)
+            error_yaw = int(-yaw)
+            
+            # compute action
+            action_x = int(self.PIDx.compute_action(error_x))
+            action_y = int(self.PIDy.compute_action(error_y))
+            action_z = int(self.PIDz.compute_action(error_z))
+            self.get_logger().info(f"Rc command: {action_x}, {action_y}, {action_z}")
+            self.tello.send_rc_control(action_y,action_x, action_z, error_yaw)
 
     
     def srv_command(self, request, response):
@@ -124,17 +125,22 @@ class TelloNode(Node):
             response.code = False
         return response
     
-    def takeoff_srv(self, trig:Trigger):
-        if self.battery_check():
+    def takeoff_srv(self, request, response):
+        try:
             self.tello.takeoff()
-            return {'success': True,'message' : "Taking off"}
-        else:
-            return {'success': False,'message' : "Error"}
+            response.success = True
+            response.message = "Takeoff started!"
+        except TelloException:
+            response.success = False
+            response.message = "Decollo aborted!"
+        return response
 
-    def land_srv(self, trig:Trigger):
+    def land_srv(self, request, response):
         self.tello.send_rc_control("rc 0 0 0 0")
         self.tello.land()
-        return {"success":True, "message": "Landing..."}
+        response.success = True
+        response.message = "Landing..."
+        return response
     
     def set_variance(self, request, response):
         var = request.variance

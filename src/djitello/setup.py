@@ -21,8 +21,8 @@ setup(
     entry_points={
         'console_scripts': [
             "tello = tello.tello_node:main",
-            "controller = tello.controller_node:main",
-            "test = tello.test_node:main"
+            "controller = controllers.controller_node:main",
+            "test = other_node.test_node:main"
         ],
     },
 )
