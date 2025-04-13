@@ -1,5 +1,4 @@
-matplotlib=3.8.0
-djitellopy=2.5
-numpy=1.26.0
-pandas=2.1.0
-rclpy  # Non si installa via pip normalmente, viene da ROS2
+matplotlib==3.8.0
+djitellopy==2.5
+numpy==1.26.0
+pandas==2.1.0

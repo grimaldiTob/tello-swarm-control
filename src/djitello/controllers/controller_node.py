@@ -13,7 +13,7 @@ class SwarmNode(Node):
         self.get_logger().info("Controller Initialized!")
 
         self.positions = [[0, 0, 0], [0, 0, 0]]
-        self.setpoint = [0, 0, 0.5, np.pi/3] # valori di default
+        self.setpoint = [0, 0, 0.5, 0] # valori di default
 
         # Init publishers and subscribers
         self.init_publishers()
@@ -53,6 +53,7 @@ class SwarmNode(Node):
         Funzione che calcola quale drone è piu vicino al set point e il suo punto più vicino alla retta passante per il set point
         In seguito si ricava il secondo target prolungando la proiezione di 30 cm e passando il target in base all'indice ricavato
         """
+        time.sleep(0.1)
         setPoint = np.array(self.setpoint[:3])  # Prendiamo x, y e z
         yaw = self.setpoint[3] # Prendiamo la yaw  del setpoint
 

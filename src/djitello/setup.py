@@ -22,7 +22,8 @@ setup(
         'console_scripts': [
             "tello = tello.tello_node:main",
             "controller = controllers.controller_node:main",
-            "test = other_node.test_node:main"
+            "test = other_nodes.test_node:main",
+            "logger = other_nodes.logger_node:main"
         ],
     },
 )

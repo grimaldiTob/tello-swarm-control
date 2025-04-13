@@ -38,11 +38,12 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        self.tello.connect()
-        self.timer = self.create_timer(0.2, self.elaborate_position)
+        #self.tello.connect()
+        self.timer = self.create_timer(0.2, self.send_status)
 
     def setup_publishers(self):
-        self.status_publisher = self.create_publisher(TelloStatus, "/Tello" + "/pose", 10)
+        self.status_publisher = self.create_publisher(TelloStatus, "/Tello/pose", 10)
+        self.error_publisher = self.create_publisher(TelloStatus, "/Tello/error", 10)
     
     def setup_subscribers(self):
         self.controller_cmd = self.create_subscription(Point, "/tello" + self.id + "/target", self.target_change, 10)
@@ -99,12 +100,12 @@ class TelloNode(Node):
         if self.tello.is_flying:
             euler = self.quaternion_to_euler()
             yaw = euler[0]
-            self.get_logger().info(f"Yaw calculated: {yaw}")
 
             #calculating errors
             error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*50)
             error_y = float(((self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*50)
             error_z = float((self.target[2] - self.tello_pose[2])*50)
+            self.publish_error(error_x, error_y, error_z)
             error_yaw = int(-yaw)
             
             # compute action
@@ -112,7 +113,7 @@ class TelloNode(Node):
             action_y = int(self.PIDy.compute_action(error_y))
             action_z = int(self.PIDz.compute_action(error_z))
             self.get_logger().info(f"Rc command: {action_x}, {action_y}, {action_z}")
-            self.tello.send_rc_control(action_y,action_x, action_z, error_yaw)
+            #self.tello.send_rc_control(action_y,action_x, action_z, error_yaw)
 
     
     def srv_command(self, request, response):
@@ -157,6 +158,16 @@ class TelloNode(Node):
         else:
             self.get_logger().info(f"Battery is too low. Recharge")
             return False
+        
+    def publish_error(self, x, y, z):
+        error = TelloStatus
+        error.x = x
+        error.y = y
+        error.z = z
+        error.id = int(self.id)
+        self.error_publisher.publish(error)
+        self.get_logger().info("Error published")
+
     
     def quaternion_to_euler(self):
         (x, y, z, w) = self.tello_quaternion
