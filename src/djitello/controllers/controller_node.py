@@ -20,9 +20,6 @@ class SwarmNode(Node):
         self.init_subscribers()
         self.init_service()
 
-        self.timer = self.create_timer(3, self.compute_target)
-
-
     def init_subscribers(self):
         self.sub = self.create_subscription(TelloStatus, "/Tello/pose", self.check_position, 10)
 
@@ -39,6 +36,8 @@ class SwarmNode(Node):
         self.setpoint[2] = request.z
         self.setpoint[3] = request.yaw
         self.degrees_to_radians()
+        self.get_logger().info("Set new target")
+        self.compute_target()
         response.code = True
         return response
 
@@ -47,6 +46,7 @@ class SwarmNode(Node):
         self.get_logger().info(f"Received position {position}")
         id = int(msg.id)
         self.positions[id-1] = position #perché gli id sono numerati da 1 piuttosto che da 0 come le liste
+
 
     def compute_target(self):
         """

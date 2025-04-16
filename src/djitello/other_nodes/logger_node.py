@@ -44,7 +44,7 @@ class Logger_Node(Node):
 
     def destroy_node(self):
         self.plot_pose()
-
+        self.plot_error()
 
         # Chiamo lo shutdown del nodo
         super().destroy_node()
@@ -78,6 +78,10 @@ class Logger_Node(Node):
         df.to_csv(csv_name, index=False)
         self.get_logger().info(f'Dati salvati in {csv_name}')
 
+        """
+        In questo caso plotto due grafici raffiguranti gli errori associati al singolo drone,
+        che riconosco tramite id
+        """
         for drone_id in df['id'].unique():
             for l in ['x', 'y', 'z']:
                 plt.plot(df[df['id'] == drone_id]['timestamp'], df[df['id'] == drone_id][l], label="Error_" + l)
@@ -86,7 +90,7 @@ class Logger_Node(Node):
             plt.title('Errori per il tello ' + str(drone_id))
             plt.grid(True)
             plt.legend()
-            png_name = f'error_t1_plot_{timestamp_str}.png'
+            png_name = f'error_t{str(drone_id)}_plot_{timestamp_str}.png'
             plt.savefig(png_name)
             self.get_logger().info(f'Grafico salvato in {png_name}')
             plt.close()

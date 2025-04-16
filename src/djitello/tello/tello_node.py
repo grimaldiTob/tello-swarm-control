@@ -4,7 +4,7 @@ from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import String
 from geometry_msgs.msg import Point, PoseStamped
-from custom_msgs.srv import StringCommand, Variance
+from custom_msgs.srv import StringCommand, Variance, SetPoint
 from custom_msgs.msg import TelloStatus
 from std_srvs.srv import Trigger
 from controllers.PID_controller import PIDController
@@ -23,7 +23,7 @@ class TelloNode(Node):
         self.id = str(id)
         self.tello_pose = [0, 0, 0]
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
-        self.target = [1.0, 0.5, 0.3]
+        self.target = [-1, -1, 1]
         self.variance = 0 # varianza di default settata a 0
 
         #setup Tello
@@ -39,7 +39,8 @@ class TelloNode(Node):
         self.setup_PID()
 
         #self.tello.connect()
-        self.timer = self.create_timer(0.2, self.send_status)
+        self.timer = self.create_timer(0.1, self.elaborate_position)
+        self.timer_ = self.create_timer(0.1, self.send_status)
 
     def setup_publishers(self):
         self.status_publisher = self.create_publisher(TelloStatus, "/Tello/pose", 10)
@@ -54,14 +55,15 @@ class TelloNode(Node):
         self.tkf_srv = self.create_service(Trigger, "/tello" + self.id + "/takeoff", self.takeoff_srv)
         self.lnd_srv = self.create_service(Trigger, "/tello" + self.id + "/land", self.land_srv)
         self.var_srv = self.create_service(Variance, "/tello" + self.id + "/variance", self.set_variance)
+        self.tar_srv = self.create_service(SetPoint, "/tello" + self.id + "/target", self.set_target)
 
     def setup_PID(self):
         self.PIDx = PIDController('x')
         self.PIDy = PIDController('y')
         self.PIDz = PIDController('z')
-        self.PIDx.set_PID_safeopt([0.57531093, 0.02, 0.17326167])
-        self.PIDy.set_PID_safeopt([0.5, 0.02, 0.15])
-        self.PIDz.set_PID_safeopt([0.7, 0.02, 0.27326167])
+        self.PIDx.set_PID_safeopt([0.5, 0, 0.20])
+        self.PIDy.set_PID_safeopt([0.5, 0, 0.20])
+        self.PIDz.set_PID_safeopt([0.7, 0, 0.35])
 
     def set_pose(self, msg:PoseStamped):
         # setting the tello pose received by the vicon
@@ -93,27 +95,37 @@ class TelloNode(Node):
         self.target[2] = msg.z
         self.get_logger().info(f"Target changed to {self.target}")
 
-        # calculating errors
-        self.elaborate_position()
     
     def elaborate_position(self):
-        if self.tello.is_flying:
-            euler = self.quaternion_to_euler()
-            yaw = euler[0]
+        self.get_logger().info(f"Posizione tello {self.tello_pose}")
+        self.get_logger().info(f"Target {self.target}")
+        #if self.tello.is_flying:
+        #euler = self.quaternion_to_euler()
+        #yaw = euler[0]
+        yaw = math.pi*3/4
 
-            #calculating errors
-            error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*50)
-            error_y = float(((self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*50)
-            error_z = float((self.target[2] - self.tello_pose[2])*50)
-            self.publish_error(error_x, error_y, error_z)
-            error_yaw = int(-yaw)
-            
-            # compute action
-            action_x = int(self.PIDx.compute_action(error_x))
-            action_y = int(self.PIDy.compute_action(error_y))
-            action_z = int(self.PIDz.compute_action(error_z))
-            self.get_logger().info(f"Rc command: {action_x}, {action_y}, {action_z}")
-            #self.tello.send_rc_control(action_y,action_x, action_z, error_yaw)
+        #calculating errors
+        error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
+        error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
+        error_z = float((self.target[2] - self.tello_pose[2])*100)
+        self.publish_error(error_x, error_y, error_z)
+        error_yaw = int(-yaw)
+
+        if(abs((self.target[0]-self.tello_pose[0])) < 0.3 and abs(self.target[1]-self.tello_pose[1]) < 0.3 and abs(self.target[2]-self.tello_pose[2]) < 0.3):
+            action_x = 0
+            action_y = 0
+            action_z = 0
+            self.tello.send_rc_control(0, 0, 0, 0)
+            self.get_logger().info("Target reached")
+            return
+        
+        # compute action
+        action_x = int(self.PIDx.compute_action(error_x))
+        action_y = int(self.PIDy.compute_action(error_y))
+        action_z = int(self.PIDz.compute_action(error_z))
+        
+        self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}")
+        self.tello.send_rc_control(action_y,action_x, action_z, 0)
 
     
     def srv_command(self, request, response):
@@ -129,6 +141,7 @@ class TelloNode(Node):
     def takeoff_srv(self, request, response):
         try:
             self.tello.takeoff()
+            self.tello.is_flying = True
             response.success = True
             response.message = "Takeoff started!"
         except TelloException:
@@ -139,6 +152,7 @@ class TelloNode(Node):
     def land_srv(self, request, response):
         self.tello.send_rc_control("rc 0 0 0 0")
         self.tello.land()
+        self.tello.is_flying = False
         response.success = True
         response.message = "Landing..."
         return response
@@ -147,6 +161,14 @@ class TelloNode(Node):
         var = request.variance
         self.variance = var
         response.data =  True
+        return response
+    
+    def set_target(self, request, response):
+        self.target[0] = request.x
+        self.target[1] = request.y
+        self.target[2] = request.z
+        self.get_logger().info(f"Target changed to {self.target}")
+        response.success = True
         return response
 
     def battery_check(self):
@@ -160,14 +182,13 @@ class TelloNode(Node):
             return False
         
     def publish_error(self, x, y, z):
-        error = TelloStatus
+        error = TelloStatus()
         error.x = x
         error.y = y
         error.z = z
         error.id = int(self.id)
         self.error_publisher.publish(error)
         self.get_logger().info("Error published")
-
     
     def quaternion_to_euler(self):
         (x, y, z, w) = self.tello_quaternion
@@ -191,8 +212,8 @@ class TelloNode(Node):
 
 def main():
     rclpy.init()
-    node1 = TelloNode("192.168.16.112", 1)
-    node2 = TelloNode("192.168.16.113", 2)
+    node1 = TelloNode("192.168.16.112", 2)
+    node2 = TelloNode("192.168.16.113", 1)
     executor = MultiThreadedExecutor()
     executor.add_node(node1)
     executor.add_node(node2)
