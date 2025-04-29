@@ -82,6 +82,7 @@ class Logger_Node(Node):
         In questo caso plotto due grafici raffiguranti gli errori associati al singolo drone,
         che riconosco tramite id
         """
+        plt.figure()
         for drone_id in df['id'].unique():
             for l in ['x', 'y', 'z']:
                 plt.plot(df[df['id'] == drone_id]['timestamp'], df[df['id'] == drone_id][l], label="Error_" + l)

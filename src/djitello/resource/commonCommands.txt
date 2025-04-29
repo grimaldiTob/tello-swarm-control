@@ -13,6 +13,12 @@ ros2 service call /controller/setPoint custom_msgs/srv/SetPoint "{x: 1, y: -1, z
 ros2 service call /tello1/target custom_msgs/srv/SetPoint "{x: 1, y: -1, z: 0.5, yaw: 0}"
 
 
+ros2 service call /tello1/takeoff std_srvs/srv/Trigger & \
+ros2 service call /tello2/takeoff std_srvs/srv/Trigger && \
+ros2 service call /tello1/target custom_msgs/srv/SetPoint "{x: 1, y: -1, z: 0.5, yaw: 0}" & \
+ros2 service call /tello2/target custom_msgs/srv/SetPoint "{x: 1, y: -1, z: 0.5, yaw: 0}"
+ros2 service call /controller/setPoint custom_msgs/srv/SetPoint "{x: 1, y: -1, z: 0.5, yaw: 0}"
+
 
 ros2 launch launch.py
 

@@ -25,6 +25,7 @@ class TelloNode(Node):
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
         self.target = [-1, -1, 1]
         self.variance = 0 # varianza di default settata a 0
+        self.frequency = 0.1
 
         #setup Tello
         self.tello = Tello(self.ip)
@@ -38,9 +39,9 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        #self.tello.connect()
-        self.timer = self.create_timer(0.1, self.elaborate_position)
-        self.timer_ = self.create_timer(0.1, self.send_status)
+        #        self.tello.connect()
+        self.timer = self.create_timer(self.frequency, self.elaborate_position)
+        self.timer_ = self.create_timer(self.frequency, self.send_status)
 
     def setup_publishers(self):
         self.status_publisher = self.create_publisher(TelloStatus, "/Tello/pose", 10)
