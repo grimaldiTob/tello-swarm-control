@@ -25,7 +25,7 @@ class TelloNode(Node):
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
         self.target = [-1, -1, 1]
         self.variance = 0 # varianza di default settata a 0
-        self.frequency = 0.1
+        self.frequency = 0.2
 
         #setup Tello
         self.tello = Tello(self.ip)
@@ -39,9 +39,10 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        #        self.tello.connect()
+        #self.tello.connect()
         self.timer = self.create_timer(self.frequency, self.elaborate_position)
         self.timer_ = self.create_timer(self.frequency, self.send_status)
+        self.publish_timer = self.create_timer(1, self.log_data)
 
     def setup_publishers(self):
         self.status_publisher = self.create_publisher(TelloStatus, "/Tello/pose", 10)
@@ -81,7 +82,7 @@ class TelloNode(Node):
         status = TelloStatus()
         meas = np.array(self.tello_pose)
         noise_pos= self.add_gaussian_noise(meas)
-        self.get_logger().info(f"Received for {meas.tolist()} noise values {noise_pos.tolist()}")
+        #self.get_logger().info(f"Received for {meas.tolist()} noise values {noise_pos.tolist()}")
         noise_pos = meas + noise_pos
         status.x = noise_pos[0]
         status.y = noise_pos[1]
@@ -98,32 +99,30 @@ class TelloNode(Node):
 
     
     def elaborate_position(self):
-        self.get_logger().info(f"Posizione tello {self.tello_pose}")
-        self.get_logger().info(f"Target {self.target}")
-        #if self.tello.is_flying:
         #euler = self.quaternion_to_euler()
         #yaw = euler[0]
+        #self.get_logger().info(f"Yaw: {yaw}")
         yaw = math.pi*3/4
-
-        #calculating errors
+        #if self.tello.is_flying:
+            #calculating errors
         error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
         error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
         error_z = float((self.target[2] - self.tello_pose[2])*100)
         self.publish_error(error_x, error_y, error_z)
         error_yaw = int(-yaw)
 
-        if(abs((self.target[0]-self.tello_pose[0])) < 0.3 and abs(self.target[1]-self.tello_pose[1]) < 0.3 and abs(self.target[2]-self.tello_pose[2]) < 0.3):
+        """if(abs((self.target[0]-self.tello_pose[0])) < 0.3 and abs(self.target[1]-self.tello_pose[1]) < 0.3 and abs(self.target[2]-self.tello_pose[2]) < 0.3):
             action_x = 0
             action_y = 0
             action_z = 0
             self.tello.send_rc_control(0, 0, 0, 0)
             self.get_logger().info("Target reached")
-            return
+            return """
         
         # compute action
-        action_x = int(self.PIDx.compute_action(error_x))
-        action_y = int(self.PIDy.compute_action(error_y))
-        action_z = int(self.PIDz.compute_action(error_z))
+        action_x = int(self.PIDx.compute_action(error_x)/2)
+        action_y = -int(self.PIDy.compute_action(error_y)/2)
+        action_z = int(self.PIDz.compute_action(error_z)/2)
         
         self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}")
         self.tello.send_rc_control(action_y,action_x, action_z, 0)
@@ -169,7 +168,7 @@ class TelloNode(Node):
         self.target[1] = request.y
         self.target[2] = request.z
         self.get_logger().info(f"Target changed to {self.target}")
-        response.success = True
+        response.code = True
         return response
 
     def battery_check(self):
@@ -181,6 +180,10 @@ class TelloNode(Node):
         else:
             self.get_logger().info(f"Battery is too low. Recharge")
             return False
+    
+    def log_data(self):
+        self.get_logger().info(f"Posizione tello {self.tello_pose}")
+        self.get_logger().info(f"Target {self.target}")
         
     def publish_error(self, x, y, z):
         error = TelloStatus()
@@ -189,7 +192,6 @@ class TelloNode(Node):
         error.z = z
         error.id = int(self.id)
         self.error_publisher.publish(error)
-        self.get_logger().info("Error published")
     
     def quaternion_to_euler(self):
         (x, y, z, w) = self.tello_quaternion
