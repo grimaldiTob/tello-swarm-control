@@ -25,7 +25,10 @@ class TelloNode(Node):
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
         self.target = [-1, -1, 1]
         self.variance = 0 # varianza di default settata a 0
-        self.frequency = 0.2
+        self.frequency = 6
+        self.time = 0
+        self.deltaTime = 0
+        self.check = True
 
         #setup Tello
         self.tello = Tello(self.ip)
@@ -39,9 +42,9 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        #self.tello.connect()
-        self.timer = self.create_timer(self.frequency, self.elaborate_position)
-        self.timer_ = self.create_timer(self.frequency, self.send_status)
+        self.tello.connect()
+        self.timer = self.create_timer(1/self.frequency, self.elaborate_position)
+        self.timer_ = self.create_timer(1/self.frequency, self.send_status)
         self.publish_timer = self.create_timer(1, self.log_data)
 
     def setup_publishers(self):
@@ -63,8 +66,8 @@ class TelloNode(Node):
         self.PIDx = PIDController('x')
         self.PIDy = PIDController('y')
         self.PIDz = PIDController('z')
-        self.PIDx.set_PID_safeopt([0.5, 0, 0.20])
-        self.PIDy.set_PID_safeopt([0.5, 0, 0.20])
+        self.PIDx.set_PID_safeopt([0.7, 0, 0.20])
+        self.PIDy.set_PID_safeopt([0.7, 0, 0.20])
         self.PIDz.set_PID_safeopt([0.7, 0, 0.35])
 
     def set_pose(self, msg:PoseStamped):
@@ -76,6 +79,7 @@ class TelloNode(Node):
                                  msg.pose.orientation.y,
                                  msg.pose.orientation.z,
                                  msg.pose.orientation.w]
+        self.setTimer(msg)
         
     def send_status(self):
         # creating the Status object
@@ -99,33 +103,39 @@ class TelloNode(Node):
 
     
     def elaborate_position(self):
-        #euler = self.quaternion_to_euler()
-        #yaw = euler[0]
-        #self.get_logger().info(f"Yaw: {yaw}")
-        yaw = math.pi*3/4
-        #if self.tello.is_flying:
+        euler = self.quaternion_to_euler()
+        yaw = euler[0]
+        self.get_logger().info(f"Yaw: {yaw}")
+        #yaw = math.pi*3/4
+        if self.tello.is_flying:
             #calculating errors
-        error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
-        error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
-        error_z = float((self.target[2] - self.tello_pose[2])*100)
-        self.publish_error(error_x, error_y, error_z)
-        error_yaw = int(-yaw)
 
-        """if(abs((self.target[0]-self.tello_pose[0])) < 0.3 and abs(self.target[1]-self.tello_pose[1]) < 0.3 and abs(self.target[2]-self.tello_pose[2]) < 0.3):
-            action_x = 0
-            action_y = 0
-            action_z = 0
-            self.tello.send_rc_control(0, 0, 0, 0)
-            self.get_logger().info("Target reached")
-            return """
-        
-        # compute action
-        action_x = int(self.PIDx.compute_action(error_x)/2)
-        action_y = -int(self.PIDy.compute_action(error_y)/2)
-        action_z = int(self.PIDz.compute_action(error_z)/2)
-        
-        self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}")
-        self.tello.send_rc_control(action_y,action_x, action_z, 0)
+            if self.deltaTime > (2/self.frequency):
+                self.tello.send_rc_control(0 ,0 ,0 ,0)
+                self.get_logger().info("Vicon Timeout!!!")
+            error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
+            error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
+            error_z = float((self.target[2] - self.tello_pose[2])*100)
+            self.publish_error(error_x, error_y, error_z)
+            error_yaw = int(-yaw)
+
+
+
+            """if(abs((self.target[0]-self.tello_pose[0])) < 0.3 and abs(self.target[1]-self.tello_pose[1]) < 0.3 and abs(self.target[2]-self.tello_pose[2]) < 0.3):
+                action_x = 0
+                action_y = 0
+                action_z = 0
+                self.tello.send_rc_control(0, 0, 0, 0)
+                self.get_logger().info("Target reached")
+                return """
+            
+            # compute action
+            action_x = int(self.PIDx.compute_action(error_x)/2)
+            action_y = -int(self.PIDy.compute_action(error_y)/2)
+            action_z = int(self.PIDz.compute_action(error_z)/2)
+            
+            self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}")
+            self.tello.send_rc_control(action_y,action_x, action_z, 0)
 
     
     def srv_command(self, request, response):
@@ -170,6 +180,14 @@ class TelloNode(Node):
         self.get_logger().info(f"Target changed to {self.target}")
         response.code = True
         return response
+    
+    def setTimer(self, msg: PoseStamped):
+        if(self.check):
+            self.check = False
+            self.time = msg.header.stamp.sec + (msg.header.stamp.nanosec * 1e-9)
+        else:
+            self.deltaTime = msg.header.stamp.sec + (msg.header.stamp.nanosec * 1e-9) -self.time
+            self.time = msg.header.stamp.sec + (msg.header.stamp.nanosec * 1e-9)   
 
     def battery_check(self):
         bat = int(self.tello.get_battery())

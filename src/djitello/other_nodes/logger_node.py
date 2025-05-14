@@ -65,6 +65,7 @@ class Logger_Node(Node):
         plt.title('Traiettoria dei droni')
         plt.grid(True)
         plt.axis('equal')
+        plt.gca().invert_yaxis() 
         plt.legend()
         png_name = f'drones_plot_{timestamp_str}.png'
         plt.savefig(png_name)
