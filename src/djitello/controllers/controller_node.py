@@ -17,7 +17,7 @@ class SwarmNode(Node):
         self.get_logger().info("Controller Initialized!")
 
         self.positions = [[0, 0, 0], [0, 0, 0]]
-        self.positions_filtered = [[0, 0, 0], [0, 0, 0]]
+        #self.positions_filtered = [[0, 0, 0], [0, 0, 0]]
         self.setpoint = [0, 0, 1, 0] # valori di default
         self.quaternion = [0, 0, 0, 1] #quaternion of the setpoint object
         self.timer = 0
@@ -51,18 +51,16 @@ class SwarmNode(Node):
 
         self.send_transform()
         
-        # istanzio i due static broadcasters
-        self.s_broadcaster1 = StaticTransformBroadcaster(self)
-        self.s_broadcaster2 = StaticTransformBroadcaster(self)
+        # istanzio lo static broadcaster
+        self.s_broadcaster = StaticTransformBroadcaster(self)
+
 
         self.setup_staticBroadcasters()
     
     def init_listeners(self):
         # istanzio i due listeners
-        self.tf1_buffer = Buffer()
-        self.tf1_listener = TransformListener(self.tf1_buffer, self)
-        self.tf2_buffer = Buffer()
-        self.tf2_listener = TransformListener(self.tf2_buffer, self)
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
     def send_transform(self):
         t = TransformStamped()
@@ -88,8 +86,8 @@ class SwarmNode(Node):
         self.setpoint[1] = request.y
         self.setpoint[2] = request.z
         self.setpoint[3] = request.yaw
-        self.degrees_to_radians()
         self.send_setPoint()
+        self.degrees_to_radians()
         self.send_transform()
         self.transform_flag = True
         #self.get_logger().info("Set new target")
@@ -111,8 +109,9 @@ class SwarmNode(Node):
             euler = self.quaternion_to_euler()
             yaw = euler[0]
             self.get_logger().info(f"Posizione del setpoint ricevuta con yaw {yaw}")
-            self.setpoint[3] = yaw
+            self.setpoint[3] = yaw * 180 / (math.pi)
             self.send_setPoint()
+            self.degrees_to_radians()
 
             """self.timer +=1 
             if self.timer % 100 == 0:
@@ -126,7 +125,7 @@ class SwarmNode(Node):
         status.x = self.setpoint[0]
         status.y = self.setpoint[1]
         status.z = self.setpoint[2]
-        status.id = int(self.setpoint[3]*180/(math.pi))
+        status.id = int(self.setpoint[3])
         self.setPoint_publ.publish(status)
 
     def check_position(self, msg:TelloStatus):
@@ -137,8 +136,10 @@ class SwarmNode(Node):
 
     def setup_staticBroadcasters(self):
         self.closest_drone()
+        self.get_logger().info(f"Closest drone is {self.idx_closest}")
         st = TransformStamped()
-        st.header.stamp = self.get_clock().now().to_msg()
+        now = self.get_clock().now().to_msg()
+        st.header.stamp = now
         st.header.frame_id = 'setpoint'
         st.child_frame_id = 'setpoint_offset'
 
@@ -151,9 +152,8 @@ class SwarmNode(Node):
         st.transform.rotation.z = 0.0
         st.transform.rotation.w = 1.0
 
-        self.s_broadcaster1.sendTransform(st)
         st2 = TransformStamped()
-        st2.header.stamp = self.get_clock().now().to_msg()
+        st2.header.stamp = now
         st2.header.frame_id = 'setpoint_offset' #'tello' + str(self.idx_closest + 1)
         st2.child_frame_id = 'drone_offset'
 
@@ -165,20 +165,20 @@ class SwarmNode(Node):
         st2.transform.rotation.y = 0.0
         st2.transform.rotation.z = 0.0
         st2.transform.rotation.w = 1.0
-        self.s_broadcaster2.sendTransform(st2)
+        self.s_broadcaster.sendTransform([st, st2])
 
     def send_targets(self):
         if self.transform_flag:
             try:
                 now = rclpy.time.Time()
-                trans1 = self.tf1_buffer.lookup_transform('world', 'setpoint_offset', now)
+                trans1 = self.tf_buffer.lookup_transform('world', 'setpoint_offset', now)
 
                 closest_target = []
                 closest_target.append(trans1.transform.translation.x)
                 closest_target.append(trans1.transform.translation.y)
                 closest_target.append(trans1.transform.translation.z)
 
-                trans2 = self.tf2_buffer.lookup_transform('world', 'drone_offset', now)
+                trans2 = self.tf_buffer.lookup_transform('world', 'drone_offset', now)
 
                 furthest_target = []
                 furthest_target.append(trans2.transform.translation.x)
@@ -198,8 +198,6 @@ class SwarmNode(Node):
         # calcolo dell'indice del drone più vicino al setpoint
         setPoint = np.array(self.setpoint[:3])  # Prendiamo x, y e z
         distances = []
-        alpha = 0.1
-        position_filtered = [0, 0, 0]
         for position in self.positions:
             #position_filtered = position_filtered*alpha + position*(1-alpha)
             distance = np.linalg.norm(position - setPoint)

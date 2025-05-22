@@ -22,7 +22,7 @@ class TestNode(Node):
         self.timer = self.create_timer(self.frequency, self.send_position2)
 
     def random_position(self):
-        position = Point(
+        """position = Point(
             x=np.random.uniform(-1, 1),
             y=np.random.uniform(-1, 1),
             z=np.random.uniform(-1, 1)
@@ -32,6 +32,17 @@ class TestNode(Node):
             y=np.random.uniform(-1, 1),
             z=np.random.uniform(-1, 1),
             w=np.random.uniform(-1, 1)
+        )"""
+        position = Point(
+            x= 1.0,
+            y= -1.0,
+            z= 1.0
+        )
+        orientation = Quaternion(
+            x= 0.0,
+            y= 0.0,
+            z= 0.0,
+            w= 1.0
         )
         return position, orientation
     

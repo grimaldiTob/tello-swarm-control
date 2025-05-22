@@ -124,8 +124,8 @@ class TelloNode(Node):
         euler = self.quaternion_to_euler()
         yaw = euler[0]
         yaw_d = euler[0] * 180 /(math.pi)
-        target_yaw = calculate_yaw((self.setpoint[0] - self.tello_pose[0]), (self.setpoint[1] - self.tello_pose[1]), degrees=True) + 180 # calcolo della yaw target in gradi
-        self.get_logger().info(f"Yaw: {yaw_d}\nTarget yaw: {target_yaw}")
+        target_yaw = calculate_yaw((self.setpoint[0] - self.target[0]), (self.setpoint[1] - self.target[1]), degrees=True)# calcolo della yaw target in gradi
+        self.get_logger().info(f"Yaw: {yaw_d}\nSetpoint jaw: {self.setpoint[3]}\nTarget yaw: {target_yaw}")
         if self.tello.is_flying:
             #calculating errors
             error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
@@ -152,7 +152,6 @@ class TelloNode(Node):
         self.setpoint[1] = msg.y
         self.setpoint[2] = msg.z
         self.setpoint[3] = msg.id
-
     
     def srv_command(self, request, response):
         try:
