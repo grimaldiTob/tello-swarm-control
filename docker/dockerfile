@@ -1,7 +1,7 @@
 FROM ros:humble
 
 RUN apt-get update && apt-get install -y python3-pip && \
-    apt install python3-colcon-common-extensions
+    apt-get update && apt-get install -y python3-colcon-common-extensions ros-humble-rviz2
 
 ENV WS=/ws
 RUN test -d ${WS} || mkdir -pv ${WS}
@@ -16,5 +16,4 @@ RUN source /opt/ros/humble/setup.bash
 
 
 # RUN source install/setup.bash && \
-#    echo "source /ws/three-nodes-problem/install/setup.bash" >> ~/.bashrc
 

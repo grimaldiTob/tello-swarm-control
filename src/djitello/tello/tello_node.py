@@ -3,9 +3,10 @@ import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import String
-from geometry_msgs.msg import Point, PoseStamped
+from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 from custom_msgs.srv import StringCommand, Variance, SetPoint
 from custom_msgs.msg import TelloStatus
+from tf2_ros import TransformBroadcaster
 from std_srvs.srv import Trigger
 from controllers.PID_controller import PIDController
 import math
@@ -23,12 +24,13 @@ class TelloNode(Node):
         self.id = str(id)
         self.tello_pose = [0, 0, 0]
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
-        self.target = [-1, -1, 1]
+        self.target = [-1, -1, 1, 0]
+        self.setpoint = [0, 0, 0, 0] #(x,y,z, yaw) del setpoint
         self.variance = 0 # varianza di default settata a 0
         self.frequency = 6
-        self.time = 0
-        self.deltaTime = 0
-        self.check = True
+        self.lastReceived = 0
+
+        self.broadcaster = TransformBroadcaster(self) # broadcaster world/tello
 
         #setup Tello
         self.tello = Tello(self.ip)
@@ -42,7 +44,7 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        self.tello.connect()
+        #self.tello.connect()
         self.timer = self.create_timer(1/self.frequency, self.elaborate_position)
         self.timer_ = self.create_timer(1/self.frequency, self.send_status)
         self.publish_timer = self.create_timer(1, self.log_data)
@@ -54,6 +56,7 @@ class TelloNode(Node):
     def setup_subscribers(self):
         self.controller_cmd = self.create_subscription(Point, "/tello" + self.id + "/target", self.target_change, 10)
         self.viconState = self.create_subscription(PoseStamped, "/vicon/Tello_" + self.id + "/Tello_" + self.id, self.set_pose, 10)
+        self.setPoint_pose = self.create_subscription(TelloStatus, "/setpoint/pose", self.change_setPoint, 10)
 
     def setup_services(self):
         self.cmd_srv = self.create_service(StringCommand, "/tello" + self.id, self.srv_command)
@@ -66,9 +69,11 @@ class TelloNode(Node):
         self.PIDx = PIDController('x')
         self.PIDy = PIDController('y')
         self.PIDz = PIDController('z')
-        self.PIDx.set_PID_safeopt([0.7, 0, 0.20])
-        self.PIDy.set_PID_safeopt([0.7, 0, 0.20])
-        self.PIDz.set_PID_safeopt([0.7, 0, 0.35])
+        self.PIDyaw = PIDController('yaw')
+        self.PIDx.set_PID_safeopt([0.55, 0, 0.20])
+        self.PIDy.set_PID_safeopt([0.55, 0, 0.20])
+        self.PIDz.set_PID_safeopt([0.55, 0, 0.35])
+        self.PIDyaw.set_PID_safeopt([0.5, 0, 0])
 
     def set_pose(self, msg:PoseStamped):
         # setting the tello pose received by the vicon
@@ -79,7 +84,20 @@ class TelloNode(Node):
                                  msg.pose.orientation.y,
                                  msg.pose.orientation.z,
                                  msg.pose.orientation.w]
-        self.setTimer(msg)
+        self.lastReceived = time.time()
+
+        t = TransformStamped()
+        t.header.stamp = self.get_clock().now().to_msg()
+        t.header.frame_id = 'world'
+        t.child_frame_id = 'tello' + self.id
+
+        t.transform.translation.x = msg.pose.position.x
+        t.transform.translation.y = msg.pose.position.y
+        t.transform.translation.z = msg.pose.position.z
+
+        t.transform.rotation = msg.pose.orientation
+
+        self.broadcaster.sendTransform(t)
         
     def send_status(self):
         # creating the Status object
@@ -105,37 +123,35 @@ class TelloNode(Node):
     def elaborate_position(self):
         euler = self.quaternion_to_euler()
         yaw = euler[0]
-        self.get_logger().info(f"Yaw: {yaw}")
-        #yaw = math.pi*3/4
+        yaw_d = euler[0] * 180 /(math.pi)
+        target_yaw = calculate_yaw((self.setpoint[0] - self.tello_pose[0]), (self.setpoint[1] - self.tello_pose[1]), degrees=True) + 180 # calcolo della yaw target in gradi
+        self.get_logger().info(f"Yaw: {yaw_d}\nTarget yaw: {target_yaw}")
         if self.tello.is_flying:
             #calculating errors
-
-            if self.deltaTime > (2/self.frequency):
-                self.tello.send_rc_control(0 ,0 ,0 ,0)
-                self.get_logger().info("Vicon Timeout!!!")
             error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
             error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
             error_z = float((self.target[2] - self.tello_pose[2])*100)
             self.publish_error(error_x, error_y, error_z)
-            error_yaw = int(-yaw)
+            error_yaw = float(target_yaw-yaw_d)
 
-
-
-            """if(abs((self.target[0]-self.tello_pose[0])) < 0.3 and abs(self.target[1]-self.tello_pose[1]) < 0.3 and abs(self.target[2]-self.tello_pose[2]) < 0.3):
-                action_x = 0
-                action_y = 0
-                action_z = 0
-                self.tello.send_rc_control(0, 0, 0, 0)
-                self.get_logger().info("Target reached")
-                return """
-            
             # compute action
-            action_x = int(self.PIDx.compute_action(error_x)/2)
-            action_y = -int(self.PIDy.compute_action(error_y)/2)
-            action_z = int(self.PIDz.compute_action(error_z)/2)
+            action_x = int(self.PIDx.compute_action(error_x)/1.4)
+            action_y = -int(self.PIDy.compute_action(error_y)/1.4)
+            action_z = int(self.PIDz.compute_action(error_z)/1.4)
+            action_yaw = -int(self.PIDz.compute_action(error_yaw)/1.4)
+
+            if (time.time()-self.lastReceived) > (2/self.frequency):
+                action_x, action_y, action_z = 0, 0, 0
+                self.get_logger().info("Vicon Timeout!!!")
             
-            self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}")
-            self.tello.send_rc_control(action_y,action_x, action_z, 0)
+            self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}, {action_yaw}")
+            self.tello.send_rc_control(action_y,action_x, action_z, action_yaw)
+
+    def change_setPoint(self, msg: TelloStatus):
+        self.setpoint[0] = msg.x
+        self.setpoint[1] = msg.y
+        self.setpoint[2] = msg.z
+        self.setpoint[3] = msg.id
 
     
     def srv_command(self, request, response):
@@ -177,17 +193,10 @@ class TelloNode(Node):
         self.target[0] = request.x
         self.target[1] = request.y
         self.target[2] = request.z
-        self.get_logger().info(f"Target changed to {self.target}")
+        #self.get_logger().info(f"Target changed to {self.target}")
         response.code = True
         return response
-    
-    def setTimer(self, msg: PoseStamped):
-        if(self.check):
-            self.check = False
-            self.time = msg.header.stamp.sec + (msg.header.stamp.nanosec * 1e-9)
-        else:
-            self.deltaTime = msg.header.stamp.sec + (msg.header.stamp.nanosec * 1e-9) -self.time
-            self.time = msg.header.stamp.sec + (msg.header.stamp.nanosec * 1e-9)   
+     
 
     def battery_check(self):
         bat = int(self.tello.get_battery())
@@ -230,7 +239,6 @@ class TelloNode(Node):
         noise = np.random.normal(loc=0.0, scale=std_dev, size=np.shape(measurement))
         return noise
 
-
 def main():
     rclpy.init()
     node1 = TelloNode("192.168.16.112", 2)
@@ -247,4 +255,8 @@ def main():
         node2.destroy_node()
         rclpy.shutdown()
 
+def calculate_yaw(x, y, degrees=False):
+
+    yaw = math.atan2(y, x)  # atan2 gestisce correttamente tutti i quadranti
+    return math.degrees(yaw) if degrees else yaw
 

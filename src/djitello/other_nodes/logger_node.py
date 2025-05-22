@@ -60,12 +60,13 @@ class Logger_Node(Node):
         for drone_id in df['id'].unique():
             plt.plot(df[df['id'] == drone_id]['x'], df[df['id'] == drone_id]['y'], label="Tello " + str(drone_id))
 
-        plt.xlabel('X [m]')
-        plt.ylabel('Y [m]')
+        plt.xlabel('X [cm]')
+        plt.ylabel('Y [cm]')
         plt.title('Traiettoria dei droni')
         plt.grid(True)
         plt.axis('equal')
         plt.gca().invert_yaxis() 
+        plt.gca().invert_xaxis() 
         plt.legend()
         png_name = f'drones_plot_{timestamp_str}.png'
         plt.savefig(png_name)
