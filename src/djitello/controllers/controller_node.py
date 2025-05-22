@@ -17,7 +17,6 @@ class SwarmNode(Node):
         self.get_logger().info("Controller Initialized!")
 
         self.positions = [[0, 0, 0], [0, 0, 0]]
-        #self.positions_filtered = [[0, 0, 0], [0, 0, 0]]
         self.setpoint = [0, 0, 1, 0] # valori di default
         self.quaternion = [0, 0, 0, 1] #quaternion of the setpoint object
         self.timer = 0
@@ -53,12 +52,10 @@ class SwarmNode(Node):
         
         # istanzio lo static broadcaster
         self.s_broadcaster = StaticTransformBroadcaster(self)
-
-
         self.setup_staticBroadcasters()
     
     def init_listeners(self):
-        # istanzio i due listeners
+        # istanzio il listener
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
@@ -105,17 +102,13 @@ class SwarmNode(Node):
                                  msg.pose.orientation.z,
                                  msg.pose.orientation.w]
             
-
             euler = self.quaternion_to_euler()
             yaw = euler[0]
             self.get_logger().info(f"Posizione del setpoint ricevuta con yaw {yaw}")
             self.setpoint[3] = yaw * 180 / (math.pi)
+
             self.send_setPoint()
             self.degrees_to_radians()
-
-            """self.timer +=1 
-            if self.timer % 100 == 0:
-                self.compute_target()"""
 
             self.send_transform()
             self.transform_flag = True
@@ -184,15 +177,21 @@ class SwarmNode(Node):
                 furthest_target.append(trans2.transform.translation.x)
                 furthest_target.append(trans2.transform.translation.y)
                 furthest_target.append(trans2.transform.translation.z)
+
+                if self.vision():
+                    if self.idx_closest == 0:
+                        self.t1_publisher(closest_target)
+                        self.t2_publisher(furthest_target)
+                    else:
+                        self.t2_publisher(closest_target)
+                        self.t1_publisher(furthest_target)
+                else:
+                    self.t1_publisher(self.positions[0])
+                    self.t2_publisher(self.positions[1])
             except Exception as e:
                 self.get_logger().warn(f'Could not transform to world frame: {e}')
 
-            if self.idx_closest == 0:
-                self.t1_publisher(closest_target)
-                self.t2_publisher(furthest_target)
-            else:
-                self.t2_publisher(closest_target)
-                self.t1_publisher(furthest_target)
+            
 
     def closest_drone(self):
         # calcolo dell'indice del drone più vicino al setpoint
@@ -203,6 +202,27 @@ class SwarmNode(Node):
             distance = np.linalg.norm(position - setPoint)
             distances.append(distance)
         self.idx_closest = np.argmin(distances)
+
+    def vision(self):
+        dx = self.positions[self.idx_closest][0] - self.setpoint[0]
+        dy = self.positions[self.idx_closest][1] - self.setpoint[1]
+        distance = math.sqrt(dx**2 + dy**2)
+
+        if distance > 1.0:
+            return False
+        
+        angle_to_drone = math.atan2(dy, dx)
+        yaw = self.setpoint[3] 
+
+        angle_diff = math.atan2(math.sin(angle_to_drone - yaw), math.cos(angle_to_drone - yaw))
+
+        fov = math.radians(30)
+        self.get_logger().info(f"{angle_diff} and {fov}")
+        if abs(angle_diff) <= fov:
+            self.get_logger().info("I droni sono visibili!")
+            return True
+        return False
+
 
 
     def compute_target(self):
