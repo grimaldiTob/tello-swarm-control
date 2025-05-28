@@ -104,7 +104,6 @@ class SwarmNode(Node):
             
             euler = self.quaternion_to_euler()
             yaw = euler[0]
-            self.get_logger().info(f"Posizione del setpoint ricevuta con yaw {yaw}")
             self.setpoint[3] = yaw * 180 / (math.pi)
 
             self.send_setPoint()
@@ -123,7 +122,6 @@ class SwarmNode(Node):
 
     def check_position(self, msg:TelloStatus):
         position = [msg.x, msg.y, msg.z]
-        self.get_logger().info(f"Received position {position}")
         id = int(msg.id)
         self.positions[id-1] = position #perché gli id sono numerati da 1 piuttosto che da 0 come le liste
 
@@ -195,7 +193,7 @@ class SwarmNode(Node):
 
     def closest_drone(self):
         # calcolo dell'indice del drone più vicino al setpoint
-        setPoint = np.array(self.setpoint[:3])  # Prendiamo x, y e z
+        setPoint = np.array(self.setpoint[:3])  # Prendo x, y e z
         distances = []
         for position in self.positions:
             #position_filtered = position_filtered*alpha + position*(1-alpha)
@@ -208,22 +206,21 @@ class SwarmNode(Node):
         dy = self.positions[self.idx_closest][1] - self.setpoint[1]
         distance = math.sqrt(dx**2 + dy**2)
 
-        if distance > 1.0:
+        self.get_logger().info(f"Distance: {distance}")
+        if distance > 2.0:
             return False
         
         angle_to_drone = math.atan2(dy, dx)
         yaw = self.setpoint[3] 
 
         angle_diff = math.atan2(math.sin(angle_to_drone - yaw), math.cos(angle_to_drone - yaw))
-
+        self.get_logger().info(f"Angle Diff: {angle_diff}")
         fov = math.radians(30)
         self.get_logger().info(f"{angle_diff} and {fov}")
         if abs(angle_diff) <= fov:
             self.get_logger().info("I droni sono visibili!")
             return True
         return False
-
-
 
     def compute_target(self):
         """
@@ -260,7 +257,6 @@ class SwarmNode(Node):
         point.y = target[1]
         point.z = target[2]
         self.publ1.publish(point)
-        self.get_logger().info(f"Sent point: {point}")
 
     def t2_publisher(self, target):
         point = Point()
@@ -268,7 +264,6 @@ class SwarmNode(Node):
         point.y = target[1]
         point.z = target[2]
         self.publ2.publish(point)
-        self.get_logger().info(f"Sent point: {point}")
 
     def quaternion_to_euler(self):
         (x, y, z, w) = self.quaternion

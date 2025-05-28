@@ -73,7 +73,7 @@ class TelloNode(Node):
         self.PIDx.set_PID_safeopt([0.55, 0, 0.20])
         self.PIDy.set_PID_safeopt([0.55, 0, 0.20])
         self.PIDz.set_PID_safeopt([0.55, 0, 0.35])
-        self.PIDyaw.set_PID_safeopt([0.5, 0, 0])
+        self.PIDyaw.set_PID_safeopt([0.70, 0.0, 0.17])
 
     def set_pose(self, msg:PoseStamped):
         # setting the tello pose received by the vicon
@@ -111,41 +111,44 @@ class TelloNode(Node):
         status.z = noise_pos[2]
         status.id = int(self.id)
         self.status_publisher.publish(status) #publish status  
-        self.get_logger().info("Sent status to the controller")
 
     def target_change(self, msg: Point):
         self.target[0] = msg.x
         self.target[1] = msg.y
         self.target[2] = msg.z
-        self.get_logger().info(f"Target changed to {self.target}")
 
     
     def elaborate_position(self):
         euler = self.quaternion_to_euler()
         yaw = euler[0]
-        yaw_d = euler[0] * 180 /(math.pi)
+        yaw_d = yaw*180/(math.pi)      
         target_yaw = calculate_yaw((self.setpoint[0] - self.tello_pose[0]), (self.setpoint[1] - self.tello_pose[1]), degrees=True)# calcolo della yaw target in gradi
         self.get_logger().info(f"Yaw: {yaw_d}\nSetpoint jaw: {self.setpoint[3]}\nTarget yaw: {target_yaw}")
-        if self.tello.is_flying:
-            #calculating errors
-            error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
-            error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
-            error_z = float((self.target[2] - self.tello_pose[2])*100)
-            self.publish_error(error_x, error_y, error_z)
-            error_yaw = float(target_yaw-yaw_d)
+        #if self.tello.is_flying:
+        #calculating errors
+        error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
+        error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
+        error_z = float((self.target[2] - self.tello_pose[2])*100)
+        self.publish_error(error_x, error_y, error_z)
+        error_yaw = float(target_yaw-yaw_d)*100/180
 
-            # compute action
-            action_x = int(self.PIDx.compute_action(error_x)/1.4)
-            action_y = -int(self.PIDy.compute_action(error_y)/1.4)
-            action_z = int(self.PIDz.compute_action(error_z)/1.4)
-            action_yaw = -int(self.PIDz.compute_action(error_yaw)/1.4)
+        # compute action
+        action_x = int(self.PIDx.compute_action(error_x)/1.5)
+        action_y = -int(self.PIDy.compute_action(error_y)/1.5)
+        action_z = int(self.PIDz.compute_action(error_z)/1.5)
+        action_yaw = -int(self.PIDyaw.compute_action(error_yaw))
 
-            if (time.time()-self.lastReceived) > (2/self.frequency):
-                action_x, action_y, action_z = 0, 0, 0
-                self.get_logger().info("Vicon Timeout!!!")
-            
-            self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}, {action_yaw}")
-            self.tello.send_rc_control(action_y,action_x, action_z, action_yaw)
+        if abs(action_x) < 3 and abs(action_y) < 3 and abs(action_z) < 3:
+            action_x, action_y, action_z = 0, 0, 0
+            self.get_logger().info("On the target!!!")
+
+
+        if (time.time()-self.lastReceived) > (2/self.frequency):
+            action_x, action_y, action_z = 0, 0, 0
+            self.get_logger().info("Vicon Timeout!!!")
+        
+        self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}, {action_yaw}")
+        self.tello.send_rc_control(action_y,action_x, action_z, action_yaw)
 
     def change_setPoint(self, msg: TelloStatus):
         self.setpoint[0] = msg.x
@@ -192,7 +195,6 @@ class TelloNode(Node):
         self.target[0] = request.x
         self.target[1] = request.y
         self.target[2] = request.z
-        #self.get_logger().info(f"Target changed to {self.target}")
         response.code = True
         return response
      
@@ -255,7 +257,6 @@ def main():
         rclpy.shutdown()
 
 def calculate_yaw(x, y, degrees=False):
-
     yaw = math.atan2(y, x)  # atan2 gestisce correttamente tutti i quadranti
     return math.degrees(yaw) if degrees else yaw
 
