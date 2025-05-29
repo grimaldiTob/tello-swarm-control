@@ -70,7 +70,7 @@ class SwarmNode(Node):
         t.transform.translation.z = float(self.setpoint[2])
         
         self.quaternion_from_euler(0, 0, self.setpoint[3]) # interessa solo la yaw
-        t.transform.rotation.x = self.quaternion[1]
+        t.transform.rotation.x = float(self.quaternion[1])
         t.transform.rotation.y = self.quaternion[2]
         t.transform.rotation.z = self.quaternion[3]
         t.transform.rotation.w = self.quaternion[0]
@@ -159,6 +159,7 @@ class SwarmNode(Node):
         self.s_broadcaster.sendTransform([st, st2])
 
     def send_targets(self):
+        self.closest_drone()
         if self.transform_flag:
             try:
                 now = rclpy.time.Time()

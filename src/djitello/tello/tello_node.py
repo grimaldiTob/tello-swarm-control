@@ -44,7 +44,7 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        #self.tello.connect()
+        self.tello.connect()
         self.timer = self.create_timer(1/self.frequency, self.elaborate_position)
         self.timer_ = self.create_timer(1/self.frequency, self.send_status)
         self.publish_timer = self.create_timer(1, self.log_data)
@@ -73,7 +73,7 @@ class TelloNode(Node):
         self.PIDx.set_PID_safeopt([0.55, 0, 0.20])
         self.PIDy.set_PID_safeopt([0.55, 0, 0.20])
         self.PIDz.set_PID_safeopt([0.55, 0, 0.35])
-        self.PIDyaw.set_PID_safeopt([0.70, 0.0, 0.17])
+        self.PIDyaw.set_PID_safeopt([0.90, 0.0, 0.08])
 
     def set_pose(self, msg:PoseStamped):
         # setting the tello pose received by the vicon
@@ -119,36 +119,36 @@ class TelloNode(Node):
 
     
     def elaborate_position(self):
-        euler = self.quaternion_to_euler()
-        yaw = euler[0]
-        yaw_d = yaw*180/(math.pi)      
+        euler = self.tello.get_yaw()
+        yaw_d = -euler
+        yaw = yaw_d*(math.pi)/180      
         target_yaw = calculate_yaw((self.setpoint[0] - self.tello_pose[0]), (self.setpoint[1] - self.tello_pose[1]), degrees=True)# calcolo della yaw target in gradi
         self.get_logger().info(f"Yaw: {yaw_d}\nSetpoint jaw: {self.setpoint[3]}\nTarget yaw: {target_yaw}")
-        #if self.tello.is_flying:
-        #calculating errors
-        error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
-        error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
-        error_z = float((self.target[2] - self.tello_pose[2])*100)
-        self.publish_error(error_x, error_y, error_z)
-        error_yaw = float(target_yaw-yaw_d)*100/180
+        if self.tello.is_flying:
+            #calculating errors
+            error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
+            error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
+            error_z = float((self.target[2] - self.tello_pose[2])*100)
+            self.publish_error(error_x, error_y, error_z)
+            error_yaw = float(target_yaw-yaw_d)
 
-        # compute action
-        action_x = int(self.PIDx.compute_action(error_x)/1.5)
-        action_y = -int(self.PIDy.compute_action(error_y)/1.5)
-        action_z = int(self.PIDz.compute_action(error_z)/1.5)
-        action_yaw = -int(self.PIDyaw.compute_action(error_yaw))
+            # compute action
+            action_x = int(self.PIDx.compute_action(error_x)/1.5)
+            action_y = -int(self.PIDy.compute_action(error_y)/1.5)
+            action_z = int(self.PIDz.compute_action(error_z)/1.5)
+            action_yaw = -int(self.PIDyaw.compute_action(error_yaw)*1.5)
 
-        if abs(action_x) < 3 and abs(action_y) < 3 and abs(action_z) < 3:
-            action_x, action_y, action_z = 0, 0, 0
-            self.get_logger().info("On the target!!!")
+            if abs(action_x) < 3 and abs(action_y) < 3 and abs(action_z) < 3:
+                action_x, action_y, action_z = 0, 0, 0
+                self.get_logger().info("On the target!!!")
 
 
-        if (time.time()-self.lastReceived) > (2/self.frequency):
-            action_x, action_y, action_z = 0, 0, 0
-            self.get_logger().info("Vicon Timeout!!!")
-        
-        self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}, {action_yaw}")
-        self.tello.send_rc_control(action_y,action_x, action_z, action_yaw)
+            if (time.time()-self.lastReceived) > (2/self.frequency):
+                action_x, action_y, action_z = 0, 0, 0
+                self.get_logger().info("Vicon Timeout!!!")
+            
+            self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}, {action_yaw}")
+            self.tello.send_rc_control(action_y,action_x, action_z, action_yaw)
 
     def change_setPoint(self, msg: TelloStatus):
         self.setpoint[0] = msg.x
