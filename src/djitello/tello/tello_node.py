@@ -98,25 +98,11 @@ class TelloNode(Node):
         t.transform.rotation = msg.pose.orientation
 
         self.broadcaster.sendTransform(t)
-        
-    def send_status(self):
-        # creating the Status object
-        status = TelloStatus()
-        meas = np.array(self.tello_pose)
-        noise_pos= self.add_gaussian_noise(meas)
-        #self.get_logger().info(f"Received for {meas.tolist()} noise values {noise_pos.tolist()}")
-        noise_pos = meas + noise_pos
-        status.x = noise_pos[0]
-        status.y = noise_pos[1]
-        status.z = noise_pos[2]
-        status.id = int(self.id)
-        self.status_publisher.publish(status) #publish status  
 
     def target_change(self, msg: Point):
         self.target[0] = msg.x
         self.target[1] = msg.y
         self.target[2] = msg.z
-
     
     def elaborate_position(self):
         euler = self.tello.get_yaw()
@@ -129,8 +115,8 @@ class TelloNode(Node):
             error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
             error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
             error_z = float((self.target[2] - self.tello_pose[2])*100)
-            self.publish_error(error_x, error_y, error_z)
             error_yaw = float(target_yaw-yaw_d)
+            self.publish_error(error_x, error_y, error_yaw) # error_yaw più rilevante dell'error_z
 
             # compute action
             action_x = int(self.PIDx.compute_action(error_x)/1.5)
@@ -197,7 +183,6 @@ class TelloNode(Node):
         self.target[2] = request.z
         response.code = True
         return response
-     
 
     def battery_check(self):
         bat = int(self.tello.get_battery())
@@ -212,6 +197,18 @@ class TelloNode(Node):
     def log_data(self):
         self.get_logger().info(f"Posizione tello {self.tello_pose}")
         self.get_logger().info(f"Target {self.target}")
+
+    def send_status(self):
+        # creating the Status object
+        status = TelloStatus()
+        meas = np.array(self.tello_pose)
+        noise_pos= self.add_gaussian_noise(meas)
+        noise_pos = meas + noise_pos
+        status.x = noise_pos[0]
+        status.y = noise_pos[1]
+        status.z = noise_pos[2]
+        status.id = int(self.id)
+        self.status_publisher.publish(status) #publish status  
         
     def publish_error(self, x, y, z):
         error = TelloStatus()

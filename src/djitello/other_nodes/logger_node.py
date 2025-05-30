@@ -39,7 +39,7 @@ class Logger_Node(Node):
             'id':msg.id,
             'x': msg.x,
             'y': msg.y,
-            'z': msg.z
+            'yaw': msg.z
         })
 
     def destroy_node(self):
@@ -86,7 +86,7 @@ class Logger_Node(Node):
         """
         plt.figure()
         for drone_id in df['id'].unique():
-            for l in ['x', 'y', 'z']:
+            for l in ['x', 'y', 'yaw']:
                 plt.plot(df[df['id'] == drone_id]['timestamp'], df[df['id'] == drone_id][l], label="Error_" + l)
             plt.xlabel('Time[s]')
             plt.ylabel('Error[m]')
