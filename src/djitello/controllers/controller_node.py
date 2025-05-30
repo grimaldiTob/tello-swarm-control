@@ -17,6 +17,7 @@ class SwarmNode(Node):
         self.get_logger().info("Controller Initialized!")
 
         self.positions = [[0, 0, 0], [0, 0, 0]]
+        self.positions_filtered = [[0, 0, 0],[0, 0, 0]]
         self.setpoint = [0, 0, 1, 0] # valori di default
         self.quaternion = [0, 0, 0, 1] #quaternion of the setpoint object
         self.timer = 0
@@ -126,7 +127,7 @@ class SwarmNode(Node):
         self.positions[id-1] = position #perché gli id sono numerati da 1 piuttosto che da 0 come le liste
 
     def setup_staticBroadcasters(self):
-        self.closest_drone()
+        self.closest_drone(0)
         self.get_logger().info(f"Closest drone is {self.idx_closest}")
         st = TransformStamped()
         now = self.get_clock().now().to_msg()
@@ -145,7 +146,7 @@ class SwarmNode(Node):
 
         st2 = TransformStamped()
         st2.header.stamp = now
-        st2.header.frame_id = 'setpoint_offset' #'tello' + str(self.idx_closest + 1)
+        st2.header.frame_id = 'setpoint_offset'
         st2.child_frame_id = 'drone_offset'
 
         st2.transform.translation.x = 0.75
@@ -159,7 +160,7 @@ class SwarmNode(Node):
         self.s_broadcaster.sendTransform([st, st2])
 
     def send_targets(self):
-        self.closest_drone()
+        self.closest_drone(0.6)
         if self.transform_flag:
             try:
                 now = rclpy.time.Time()
@@ -192,13 +193,13 @@ class SwarmNode(Node):
 
             
 
-    def closest_drone(self):
+    def closest_drone(self, alpha):
         # calcolo dell'indice del drone più vicino al setpoint
         setPoint = np.array(self.setpoint[:3])  # Prendo x, y e z
         distances = []
-        for position in self.positions:
-            #position_filtered = position_filtered*alpha + position*(1-alpha)
-            distance = np.linalg.norm(position - setPoint)
+        for i, position in enumerate(self.positions):
+            self.position_filtered = self.position_filtered[i]*alpha + position*(1-alpha)
+            distance = np.linalg.norm(self.position_filtered[i] - setPoint)
             distances.append(distance)
         self.idx_closest = np.argmin(distances)
 
@@ -216,40 +217,12 @@ class SwarmNode(Node):
 
         angle_diff = math.atan2(math.sin(angle_to_drone - yaw), math.cos(angle_to_drone - yaw))
         self.get_logger().info(f"Angle Diff: {angle_diff}")
-        fov = math.radians(30)
+        fov = math.radians(45)
         self.get_logger().info(f"{angle_diff} and {fov}")
         if abs(angle_diff) <= fov:
             self.get_logger().info("I droni sono visibili!")
             return True
         return False
-
-    def compute_target(self):
-        """
-        Funzione che calcola quale drone è piu vicino al set point e il suo punto più vicino alla retta passante per il set point
-        In seguito si ricava il secondo target prolungando la proiezione di 30 cm e passando il target in base all'indice ricavato
-        """
-        time.sleep(0.1)
-        setPoint = np.array(self.setpoint[:3])  # Prendiamo x, y e z
-        yaw = self.setpoint[3] # Prendiamo la yaw  del setpoint
-
-        # Calcola il versore nel piano xy
-        direction = np.array([np.cos(yaw), np.sin(yaw), 0])
-
-        self.closest_drone()
-        closest_drone = self.positions[self.idx_closest] # drone più vicino al setPoint
-
-        vector_to_drone = closest_drone - setPoint
-        projection = np.dot(vector_to_drone, direction) # lunghezza della proiezione sulla retta
-
-        # Calcola punto sulla retta più vicino al drone
-        target_closest = setPoint + projection * direction
-        target_furthest = setPoint + (projection + 0.50) * direction # considero la proiezione 50 cm più lunga e calcolo il secondo target
-        if self.idx_closest == 0:
-            self.t1_publisher(target_closest.tolist())
-            self.t2_publisher(target_furthest.tolist())
-        else:
-            self.t2_publisher(target_closest.tolist())
-            self.t1_publisher(target_furthest.tolist())
     
     def t1_publisher(self, target):
         point = Point()

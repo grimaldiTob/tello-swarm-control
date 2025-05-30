@@ -5,9 +5,6 @@ from std_msgs.msg import Header
 from geometry_msgs.msg import Point, Quaternion, PoseStamped
 
 class TestNode(Node):
-    """
-    Node used for testing. It simulates the action of the Vicon sending positions to the Tellos with a specified frequency.
-    """
 
     def __init__(self, frequency=0.01):
         super().__init__("TestNode")
