@@ -88,8 +88,6 @@ class SwarmNode(Node):
         self.degrees_to_radians()
         self.send_transform()
         self.transform_flag = True
-        #self.get_logger().info("Set new target")
-        #self.compute_target()
         response.code = True
         return response
 
