@@ -252,6 +252,6 @@ def main():
         rclpy.shutdown()
 
 def calculate_yaw(x, y, degrees=False):
-    yaw = math.atan2(y, x)  # atan2 gestisce correttamente tutti i quadranti
+    yaw = math.atan2(y, x)
     return math.degrees(yaw) if degrees else yaw
 
