@@ -77,9 +77,10 @@ class TelloNode(Node):
 
     def set_pose(self, msg:PoseStamped):
         # setting the tello pose received by the vicon
-        self.tello_pose = [msg.pose.position.x,
-                           msg.pose.position.y,
-                           msg.pose.position.z]
+        meas = np.array(self.tello_pose)
+        noise_pos= self.add_gaussian_noise(meas)
+        noise_pos = meas + noise_pos
+        self.tello_pose = noise_pos
         self.tello_quaternion = [msg.pose.orientation.x,
                                  msg.pose.orientation.y,
                                  msg.pose.orientation.z,
@@ -98,11 +99,6 @@ class TelloNode(Node):
         t.transform.rotation = msg.pose.orientation
 
         self.broadcaster.sendTransform(t)
-
-    def target_change(self, msg: Point):
-        self.target[0] = msg.x
-        self.target[1] = msg.y
-        self.target[2] = msg.z
     
     def elaborate_position(self):
         euler = self.tello.get_yaw()
@@ -141,6 +137,11 @@ class TelloNode(Node):
         self.setpoint[1] = msg.y
         self.setpoint[2] = msg.z
         self.setpoint[3] = msg.id
+
+    def target_change(self, msg: Point):
+        self.target[0] = msg.x
+        self.target[1] = msg.y
+        self.target[2] = msg.z
     
     def srv_command(self, request, response):
         try:
@@ -201,12 +202,9 @@ class TelloNode(Node):
     def send_status(self):
         # creating the Status object
         status = TelloStatus()
-        meas = np.array(self.tello_pose)
-        noise_pos= self.add_gaussian_noise(meas)
-        noise_pos = meas + noise_pos
-        status.x = noise_pos[0]
-        status.y = noise_pos[1]
-        status.z = noise_pos[2]
+        status.x = self.tello_pose[0]
+        status.y = self.tello_pose[1]
+        status.z = self.tello_pose[2]
         status.id = int(self.id)
         self.status_publisher.publish(status) #publish status  
         
