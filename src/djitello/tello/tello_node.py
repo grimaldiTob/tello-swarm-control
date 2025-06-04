@@ -26,7 +26,7 @@ class TelloNode(Node):
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
         self.target = [-1, -1, 1, 0]
         self.setpoint = [0, 0, 0, 0] #(x,y,z, yaw) del setpoint
-        self.variance = 0 # varianza di default settata a 0
+        self.variance = 0.001 # varianza di default settata a 0
         self.frequency = 6
         self.lastReceived = 0
 
@@ -73,10 +73,13 @@ class TelloNode(Node):
         self.PIDx.set_PID_safeopt([0.55, 0, 0.20])
         self.PIDy.set_PID_safeopt([0.55, 0, 0.20])
         self.PIDz.set_PID_safeopt([0.55, 0, 0.35])
-        self.PIDyaw.set_PID_safeopt([0.90, 0.0, 0.08])
+        self.PIDyaw.set_PID_safeopt([0.80, 0, 0.08])
 
     def set_pose(self, msg:PoseStamped):
         # setting the tello pose received by the vicon
+        self.tello_pose = [msg.pose.position.x,
+                           msg.pose.position.y,
+                           msg.pose.position.z]
         meas = np.array(self.tello_pose)
         noise_pos= self.add_gaussian_noise(meas)
         noise_pos = meas + noise_pos
@@ -103,8 +106,8 @@ class TelloNode(Node):
     def elaborate_position(self):
         euler = self.tello.get_yaw()
         yaw_d = -euler
-        yaw = yaw_d*(math.pi)/180      
         target_yaw = calculate_yaw((self.setpoint[0] - self.tello_pose[0]), (self.setpoint[1] - self.tello_pose[1]), degrees=True)# calcolo della yaw target in gradi
+        yaw = yaw_d*(math.pi)/180
         self.get_logger().info(f"Yaw: {yaw_d}\nSetpoint jaw: {self.setpoint[3]}\nTarget yaw: {target_yaw}")
         if self.tello.is_flying:
             #calculating errors
@@ -197,14 +200,15 @@ class TelloNode(Node):
     
     def log_data(self):
         self.get_logger().info(f"Posizione tello {self.tello_pose}")
+        self.get_logger().info(f"Posizione setpoint {self.setpoint}")
         self.get_logger().info(f"Target {self.target}")
 
     def send_status(self):
         # creating the Status object
         status = TelloStatus()
-        status.x = self.tello_pose[0]
-        status.y = self.tello_pose[1]
-        status.z = self.tello_pose[2]
+        status.x = float(self.tello_pose[0])
+        status.y = float(self.tello_pose[1])
+        status.z = float(self.tello_pose[2])
         status.id = int(self.id)
         self.status_publisher.publish(status) #publish status  
         

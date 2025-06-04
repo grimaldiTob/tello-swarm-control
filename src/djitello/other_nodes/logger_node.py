@@ -76,20 +76,19 @@ class Logger_Node(Node):
     def plot_error(self):
         df = pd.DataFrame(self.error_data)
         timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
-        csv_name = f'error_log_{timestamp_str}.csv'
-        df.to_csv(csv_name, index=False)
-        self.get_logger().info(f'Dati salvati in {csv_name}')
-
-        """
-        In questo caso plotto due grafici raffiguranti gli errori associati al singolo drone,
-        che riconosco tramite id
-        """
-        plt.figure()
+        
         for drone_id in df['id'].unique():
+            df_drone = df[df['id'] == drone_id]
+
+            csv_name = f'error_t{drone_id}_log_{timestamp_str}.csv'
+            df_drone.to_csv(csv_name, index=False)
+            self.get_logger().info(f'Dati del drone {drone_id} salvati in {csv_name}')
+
+            plt.figure()
             for l in ['x', 'y', 'yaw']:
-                plt.plot(df[df['id'] == drone_id]['timestamp'], df[df['id'] == drone_id][l], label="Error_" + l)
+                plt.plot(df_drone['timestamp'], df_drone[l], label=f"Error_{l}")
             plt.xlabel('Time[s]')
-            plt.ylabel('Error[m]')
+            plt.ylabel('Error[cm/degrees]')
             plt.title('Errori per il tello ' + str(drone_id))
             plt.grid(True)
             plt.legend()

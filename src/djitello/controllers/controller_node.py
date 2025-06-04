@@ -93,7 +93,7 @@ class SwarmNode(Node):
 
     def move_setPoint(self, msg: PoseStamped):
         if(abs(msg.pose.position.x) < 2 and abs(msg.pose.position.y) < 2):
-            self.setpoint[0] = msg.pose.orientation.x
+            self.setpoint[0] = msg.pose.position.x
             self.setpoint[1] = msg.pose.position.y
             self.setpoint[2] = msg.pose.position.z
             self.quaternion = [msg.pose.orientation.x,
@@ -196,8 +196,10 @@ class SwarmNode(Node):
         setPoint = np.array(self.setpoint[:3])  # Prendo x, y e z
         distances = []
         for i, position in enumerate(self.positions):
-            self.position_filtered = self.position_filtered[i]*alpha + position*(1-alpha)
-            distance = np.linalg.norm(self.position_filtered[i] - setPoint)
+            position_filtered = np.array(self.positions_filtered[i])
+            np_position = np.array(position)
+            self.positions_filtered[i] = position_filtered*alpha + np_position*(1-alpha)
+            distance = np.linalg.norm(self.positions_filtered[i] - setPoint)
             distances.append(distance)
         self.idx_closest = np.argmin(distances)
 
