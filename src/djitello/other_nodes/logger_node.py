@@ -14,12 +14,14 @@ class Logger_Node(Node):
 
         self.pose_data = []
         self.error_data = []
+        self.observer_pose = []
         self.get_logger().info('Logger Node avviato e in ascolto')
 
 
     def init_subscription(self):
         self.pose_sub = self.create_subscription(TelloStatus, "/Tello/pose", self.pose_callback, 10)
         self.error_sub = self.create_subscription(TelloStatus, "/Tello/error", self.error_callback, 10)
+        self.error_sub = self.create_subscription(TelloStatus, "/observer/pose", self.obs_pose_callback, 10)
 
 
     def pose_callback(self, msg:TelloStatus):
@@ -30,6 +32,16 @@ class Logger_Node(Node):
             'x': msg.x,
             'y': msg.y,
             'z': msg.z
+        })
+
+    def obs_pose_callback(self, msg:TelloStatus):
+        timestamp = self.get_clock().now().nanoseconds * 1e-9
+        self.observer_pose.append({
+            'timestamp': timestamp,
+            'x': msg.x,
+            'y': msg.y,
+            'z': msg.z,
+            'yaw': msg.id,
         })
     
     def error_callback(self, msg:TelloStatus):
@@ -45,6 +57,7 @@ class Logger_Node(Node):
     def destroy_node(self):
         self.plot_pose()
         self.plot_error()
+        self.save_observer()
 
         # Chiamo lo shutdown del nodo
         super().destroy_node()
@@ -56,7 +69,7 @@ class Logger_Node(Node):
         df.to_csv(csv_name, index=False)
         self.get_logger().info(f'Dati salvati in {csv_name}')
 
-        plt.figure()
+        """plt.figure()
         for drone_id in df['id'].unique():
             plt.plot(df[df['id'] == drone_id]['x'], df[df['id'] == drone_id]['y'], label="Tello " + str(drone_id))
 
@@ -71,7 +84,14 @@ class Logger_Node(Node):
         png_name = f'drones_plot_{timestamp_str}.png'
         plt.savefig(png_name)
         self.get_logger().info(f'Grafico salvato in {png_name}')
-        plt.close()
+        plt.close()"""
+
+    def save_observer(self):
+        df = pd.DataFrame(self.observer_pose)
+        timestamp_str = datetime.now().strftime('%Y%m%d_%H%M%S')
+        csv_name = f'observer_log_{timestamp_str}.csv'
+        df.to_csv(csv_name, index=False)
+        self.get_logger().info(f'Dati observer salvati in {csv_name}')
 
     def plot_error(self):
         df = pd.DataFrame(self.error_data)
@@ -84,7 +104,7 @@ class Logger_Node(Node):
             df_drone.to_csv(csv_name, index=False)
             self.get_logger().info(f'Dati del drone {drone_id} salvati in {csv_name}')
 
-            plt.figure()
+            """plt.figure()
             for l in ['x', 'y', 'yaw']:
                 plt.plot(df_drone['timestamp'], df_drone[l], label=f"Error_{l}")
             plt.xlabel('Time[s]')
@@ -95,7 +115,7 @@ class Logger_Node(Node):
             png_name = f'error_t{str(drone_id)}_plot_{timestamp_str}.png'
             plt.savefig(png_name)
             self.get_logger().info(f'Grafico salvato in {png_name}')
-            plt.close()
+            plt.close()"""
 
 def main():
     rclpy.init(args=None)

@@ -44,7 +44,7 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        self.tello.connect()
+        #self.tello.connect()
         self.timer = self.create_timer(1/self.frequency, self.elaborate_position)
         self.timer_ = self.create_timer(1/self.frequency, self.send_status)
         self.publish_timer = self.create_timer(1, self.log_data)
@@ -56,7 +56,7 @@ class TelloNode(Node):
     def setup_subscribers(self):
         self.controller_cmd = self.create_subscription(Point, "/tello" + self.id + "/target", self.target_change, 10)
         self.viconState = self.create_subscription(PoseStamped, "/vicon/Tello_" + self.id + "/Tello_" + self.id, self.set_pose, 10)
-        self.observer_pose = self.create_subscription(TelloStatus, "/observer/pose", self.change_observer_pose, 10)
+        self.observer_pubbl = self.create_subscription(TelloStatus, "/observer/pose", self.change_observer_pose, 10)
 
     def setup_services(self):
         self.cmd_srv = self.create_service(StringCommand, "/tello" + self.id, self.srv_command)
@@ -104,7 +104,7 @@ class TelloNode(Node):
         self.broadcaster.sendTransform(t)
     
     def elaborate_position(self):
-        euler = self.tello.get_yaw()
+        #euler = self.tello.get_yaw()
         yaw_d = 0
         target_yaw = calculate_yaw((self.observer_pose[0] - self.tello_pose[0]), (self.observer_pose[1] - self.tello_pose[1]), degrees=True)# calcolo della yaw target in gradi
         yaw = yaw_d*(math.pi)/180
