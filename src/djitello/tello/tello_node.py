@@ -26,7 +26,7 @@ class TelloNode(Node):
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
         self.target = [-1, -1, 1, 0]
         self.setpoint = [0, 0, 0, 0] #(x,y,z, yaw) del setpoint
-        self.variance = 0.001 # varianza di default settata a 0
+        self.variance = 0.0 # varianza di default settata a 0
         self.frequency = 6
         self.lastReceived = 0
 
@@ -44,7 +44,7 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        self.tello.connect()
+        #self.tello.connect()
         self.timer = self.create_timer(1/self.frequency, self.elaborate_position)
         self.timer_ = self.create_timer(1/self.frequency, self.send_status)
         self.publish_timer = self.create_timer(1, self.log_data)
@@ -104,8 +104,8 @@ class TelloNode(Node):
         self.broadcaster.sendTransform(t)
     
     def elaborate_position(self):
-        euler = self.tello.get_yaw()
-        yaw_d = -euler
+        #euler = self.tello.get_yaw()
+        yaw_d = 0
         target_yaw = calculate_yaw((self.setpoint[0] - self.tello_pose[0]), (self.setpoint[1] - self.tello_pose[1]), degrees=True)# calcolo della yaw target in gradi
         yaw = yaw_d*(math.pi)/180
         self.get_logger().info(f"Yaw: {yaw_d}\nSetpoint jaw: {self.setpoint[3]}\nTarget yaw: {target_yaw}")

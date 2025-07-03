@@ -11,6 +11,7 @@ class TestNode(Node):
         self.get_logger().info(f"Test node initialized!")
 
         self.frequency = frequency
+        self.pose = [0, 0, 0]
         self.position = PoseStamped()
         self.publisher1 = self.create_publisher(PoseStamped, "/vicon/Tello_1/Tello_1", 10)
         self.publisher2 = self.create_publisher(PoseStamped, "/vicon/Tello_2/Tello_2", 10)
@@ -19,27 +20,20 @@ class TestNode(Node):
         self.timer = self.create_timer(self.frequency, self.send_position2)
 
     def random_position(self):
-        """position = Point(
-            x=np.random.uniform(-1, 1),
-            y=np.random.uniform(-1, 1),
-            z=np.random.uniform(-1, 1)
-        )
-        orientation = Quaternion(
-            x=np.random.uniform(-1, 1),
-            y=np.random.uniform(-1, 1),
-            z=np.random.uniform(-1, 1),
-            w=np.random.uniform(-1, 1)
-        )"""
+        self.pose[0] = self.pose[0] + np.random.uniform(-0.05, 0.05)
+        self.pose[1] = self.pose[1] + np.random.uniform(-0.05, 0.05)
+        self.pose[2] = self.pose[2] + np.random.uniform(-0.05, 0.05)
+
         position = Point(
-            x= 1.0,
-            y= -1.0,
-            z= 1.0
+            x=self.pose[0],
+            y=self.pose[1],
+            z=self.pose[2]
         )
         orientation = Quaternion(
-            x= 0.0,
-            y= 0.0,
-            z= 0.0,
-            w= 1.0
+            x=0.0,
+            y=0.0,
+            z=0.0,
+            w=1.0
         )
         return position, orientation
     
