@@ -18,8 +18,8 @@ class SwarmNode(Node):
 
         self.positions = [[0, 0, 0], [0, 0, 0]]
         self.positions_filtered = [[0, 0, 0],[0, 0, 0]]
-        self.setpoint = [0, 0, 1, 0] # valori di default
-        self.quaternion = [0, 0, 0, 1] #quaternion of the setpoint object
+        self.observer_pose = [0, 0, 1, 0] # valori di default
+        self.quaternion = [0, 0, 0, 1] #quaternion of the observer object
         self.timer = 0
         self.idx_closest = 0
         self.transform_flag = False # settata a False finché non sono istanziate le trasformate
@@ -36,18 +36,18 @@ class SwarmNode(Node):
 
     def init_subscribers(self):
         self.sub = self.create_subscription(TelloStatus, "/Tello/pose", self.check_position, 10)
-        self.aruco_sub = self.create_subscription(PoseStamped, "/vicon/aruco42/aruco42", self.move_setPoint, 10)
+        self.aruco_sub = self.create_subscription(PoseStamped, "/vicon/aruco42/aruco42", self.move_observer_pose, 10)
 
     def init_publishers(self):
         self.publ1 = self.create_publisher(Point, "/tello1/target", 10)
         self.publ2 = self.create_publisher(Point, "/tello2/target", 10)
-        self.setPoint_publ = self.create_publisher(TelloStatus, "/setpoint/pose", 10)
+        self.observer_publ = self.create_publisher(TelloStatus, "/observer/pose", 10)
 
     def init_service(self):
-        self.service = self.create_service(SetPoint, "/controller/setPoint", self.get_setPoint)
+        self.service = self.create_service(SetPoint, "/controller/setPoint", self.get_observer_pose)
 
     def init_broadcasters(self):
-        self.w_broadcaster = TransformBroadcaster(self) # broadcaster world/setpoint
+        self.w_broadcaster = TransformBroadcaster(self) # broadcaster world/observer
 
         self.send_transform()
         
@@ -65,12 +65,12 @@ class SwarmNode(Node):
 
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = 'world'
-        t.child_frame_id = 'setpoint'
-        t.transform.translation.x = float(self.setpoint[0])
-        t.transform.translation.y = float(self.setpoint[1])
-        t.transform.translation.z = float(self.setpoint[2])
+        t.child_frame_id = 'observer'
+        t.transform.translation.x = float(self.observer_pose[0])
+        t.transform.translation.y = float(self.observer_pose[1])
+        t.transform.translation.z = float(self.observer_pose[2])
         
-        self.quaternion_from_euler(0, 0, self.setpoint[3]) # interessa solo la yaw
+        self.quaternion_from_euler(0, 0, self.observer_pose[3]) # interessa solo la yaw
         t.transform.rotation.x = float(self.quaternion[1])
         t.transform.rotation.y = self.quaternion[2]
         t.transform.rotation.z = self.quaternion[3]
@@ -79,23 +79,23 @@ class SwarmNode(Node):
         self.w_broadcaster.sendTransform(t)
 
 
-    def get_setPoint(self, request, response):
-        self.setpoint[0] = request.x
-        self.setpoint[1] = request.y
-        self.setpoint[2] = request.z
-        self.setpoint[3] = request.yaw
-        self.send_setPoint()
+    def get_observer_pose(self, request, response):
+        self.observer_pose[0] = request.x
+        self.observer_pose[1] = request.y
+        self.observer_pose[2] = request.z
+        self.observer_pose[3] = request.yaw
+        self.send_observer_pose()
         self.degrees_to_radians()
         self.send_transform()
         self.transform_flag = True
         response.code = True
         return response
 
-    def move_setPoint(self, msg: PoseStamped):
+    def move_observer_pose(self, msg: PoseStamped):
         if(abs(msg.pose.position.x) < 2 and abs(msg.pose.position.y) < 2):
-            self.setpoint[0] = msg.pose.position.x
-            self.setpoint[1] = msg.pose.position.y
-            self.setpoint[2] = msg.pose.position.z
+            self.observer_pose[0] = msg.pose.position.x
+            self.observer_pose[1] = msg.pose.position.y
+            self.observer_pose[2] = msg.pose.position.z
             self.quaternion = [msg.pose.orientation.x,
                                  msg.pose.orientation.y,
                                  msg.pose.orientation.z,
@@ -103,21 +103,21 @@ class SwarmNode(Node):
             
             euler = self.quaternion_to_euler()
             yaw = euler[0]
-            self.setpoint[3] = yaw * 180 / (math.pi)
+            self.observer_pose[3] = yaw * 180 / (math.pi)
 
-            self.send_setPoint()
+            self.send_observer_pose()
             self.degrees_to_radians()
 
             self.send_transform()
             self.transform_flag = True
         
-    def send_setPoint(self):
+    def send_observer_pose(self):
         status = TelloStatus()
-        status.x = self.setpoint[0]
-        status.y = self.setpoint[1]
-        status.z = self.setpoint[2]
-        status.id = int(self.setpoint[3])
-        self.setPoint_publ.publish(status)
+        status.x = self.observer_pose[0]
+        status.y = self.observer_pose[1]
+        status.z = self.observer_pose[2]
+        status.id = int(self.observer_pose[3])
+        self.observer_publ.publish(status)
 
     def check_position(self, msg:TelloStatus):
         position = [msg.x, msg.y, msg.z]
@@ -130,8 +130,8 @@ class SwarmNode(Node):
         st = TransformStamped()
         now = self.get_clock().now().to_msg()
         st.header.stamp = now
-        st.header.frame_id = 'setpoint'
-        st.child_frame_id = 'setpoint_offset'
+        st.header.frame_id = 'observer'
+        st.child_frame_id = 'observer_offset'
 
         st.transform.translation.x = 1.0
         st.transform.translation.y = 0.0
@@ -144,7 +144,7 @@ class SwarmNode(Node):
 
         st2 = TransformStamped()
         st2.header.stamp = now
-        st2.header.frame_id = 'setpoint_offset'
+        st2.header.frame_id = 'observer_offset'
         st2.child_frame_id = 'drone_offset'
 
         st2.transform.translation.x = 0.75
@@ -162,7 +162,7 @@ class SwarmNode(Node):
         if self.transform_flag:
             try:
                 now = rclpy.time.Time()
-                trans1 = self.tf_buffer.lookup_transform('world', 'setpoint_offset', now)
+                trans1 = self.tf_buffer.lookup_transform('world', 'observer_offset', now)
 
                 closest_target = []
                 closest_target.append(trans1.transform.translation.x)
@@ -192,20 +192,20 @@ class SwarmNode(Node):
             
 
     def closest_drone(self, alpha):
-        # calcolo dell'indice del drone più vicino al setpoint
-        setPoint = np.array(self.setpoint[:3])  # Prendo x, y e z
+        # calcolo dell'indice del drone più vicino all' observer
+        observer_pose = np.array(self.observer_pose[:3])  # Prendo x, y e z
         distances = []
         for i, position in enumerate(self.positions):
             position_filtered = np.array(self.positions_filtered[i])
             np_position = np.array(position)
             self.positions_filtered[i] = position_filtered*alpha + np_position*(1-alpha)
-            distance = np.linalg.norm(self.positions_filtered[i] - setPoint)
+            distance = np.linalg.norm(self.positions_filtered[i] - observer_pose)
             distances.append(distance)
         self.idx_closest = np.argmin(distances)
 
     def vision(self):
-        dx = self.positions[self.idx_closest][0] - self.setpoint[0]
-        dy = self.positions[self.idx_closest][1] - self.setpoint[1]
+        dx = self.positions[self.idx_closest][0] - self.observer_pose[0]
+        dy = self.positions[self.idx_closest][1] - self.observer_pose[1]
         distance = math.sqrt(dx**2 + dy**2)
 
         self.get_logger().info(f"Distance: {distance}")
@@ -213,7 +213,7 @@ class SwarmNode(Node):
             return False
         
         angle_to_drone = math.atan2(dy, dx)
-        yaw = self.setpoint[3] 
+        yaw = self.observer_pose[3] 
 
         angle_diff = math.atan2(math.sin(angle_to_drone - yaw), math.cos(angle_to_drone - yaw))
         self.get_logger().info(f"Angle Diff: {angle_diff}")
@@ -254,7 +254,7 @@ class SwarmNode(Node):
         return [yaw, pitch, roll]
     
     def degrees_to_radians(self):
-        self.setpoint[3] = self.setpoint[3] * np.pi / 180
+        self.observer_pose[3] = self.observer_pose[3] * np.pi / 180
 
     def quaternion_from_euler(self, roll, pitch, yaw):
         cy = math.cos(yaw * 0.5)

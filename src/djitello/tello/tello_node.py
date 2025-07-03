@@ -25,7 +25,7 @@ class TelloNode(Node):
         self.tello_pose = [0, 0, 0]
         self.tello_quaternion = [0, 0, 0, 0] # valori di default
         self.target = [-1, -1, 1, 0]
-        self.setpoint = [0, 0, 0, 0] #(x,y,z, yaw) del setpoint
+        self.observer_pose = [0, 0, 0, 0] #(x,y,z, yaw) del observer_pose
         self.variance = 0.0 # varianza di default settata a 0
         self.frequency = 8
         self.lastReceived = 0
@@ -56,7 +56,7 @@ class TelloNode(Node):
     def setup_subscribers(self):
         self.controller_cmd = self.create_subscription(Point, "/tello" + self.id + "/target", self.target_change, 10)
         self.viconState = self.create_subscription(PoseStamped, "/vicon/Tello_" + self.id + "/Tello_" + self.id, self.set_pose, 10)
-        self.setPoint_pose = self.create_subscription(TelloStatus, "/setpoint/pose", self.change_setPoint, 10)
+        self.observer_pose = self.create_subscription(TelloStatus, "/observer/pose", self.change_observer_pose, 10)
 
     def setup_services(self):
         self.cmd_srv = self.create_service(StringCommand, "/tello" + self.id, self.srv_command)
@@ -106,9 +106,9 @@ class TelloNode(Node):
     def elaborate_position(self):
         euler = self.tello.get_yaw()
         yaw_d = 0
-        target_yaw = calculate_yaw((self.setpoint[0] - self.tello_pose[0]), (self.setpoint[1] - self.tello_pose[1]), degrees=True)# calcolo della yaw target in gradi
+        target_yaw = calculate_yaw((self.observer_pose[0] - self.tello_pose[0]), (self.observer_pose[1] - self.tello_pose[1]), degrees=True)# calcolo della yaw target in gradi
         yaw = yaw_d*(math.pi)/180
-        self.get_logger().info(f"Yaw: {yaw_d}\nSetpoint jaw: {self.setpoint[3]}\nTarget yaw: {target_yaw}")
+        self.get_logger().info(f"Yaw: {yaw_d}\nObserver jaw: {self.observer_pose[3]}\nTarget yaw: {target_yaw}")
         if self.tello.is_flying:
             #calculating errors
             error_x = float(((self.target[0]-self.tello_pose[0])*math.cos(yaw) + (self.target[1]-self.tello_pose[1])*math.sin(yaw))*100)
@@ -135,11 +135,11 @@ class TelloNode(Node):
             self.get_logger().info(f"Rc command: {action_y}, {action_x}, {action_z}, {action_yaw}")
             self.tello.send_rc_control(action_y,action_x, action_z, action_yaw)
 
-    def change_setPoint(self, msg: TelloStatus):
-        self.setpoint[0] = msg.x
-        self.setpoint[1] = msg.y
-        self.setpoint[2] = msg.z
-        self.setpoint[3] = msg.id
+    def change_observer_pose(self, msg: TelloStatus):
+        self.observer_pose[0] = msg.x
+        self.observer_pose[1] = msg.y
+        self.observer_pose[2] = msg.z
+        self.observer_pose[3] = msg.id
 
     def target_change(self, msg: Point):
         self.target[0] = msg.x
@@ -200,7 +200,7 @@ class TelloNode(Node):
     
     def log_data(self):
         self.get_logger().info(f"Posizione tello {self.tello_pose}")
-        self.get_logger().info(f"Posizione setpoint {self.setpoint}")
+        self.get_logger().info(f"Posizione observer {self.observer_pose}")
         self.get_logger().info(f"Target {self.target}")
 
     def send_status(self):
