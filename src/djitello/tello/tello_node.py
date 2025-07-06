@@ -44,14 +44,16 @@ class TelloNode(Node):
         #Setup PID controllers
         self.setup_PID()
 
-        #self.tello.connect()
+        self.tello.connect()
         self.timer = self.create_timer(1/self.frequency, self.elaborate_position)
         self.timer_ = self.create_timer(1/self.frequency, self.send_status)
         self.publish_timer = self.create_timer(1, self.log_data)
 
     def setup_publishers(self):
         self.status_publisher = self.create_publisher(TelloStatus, "/Tello/pose", 10)
+        self.plot_publisher = self.create_publisher(TelloStatus, "/Tello/plot", 10)
         self.error_publisher = self.create_publisher(TelloStatus, "/Tello/error", 10)
+        self.target_publisher = self.create_publisher(TelloStatus, "/Tello/target", 10)
     
     def setup_subscribers(self):
         self.controller_cmd = self.create_subscription(Point, "/tello" + self.id + "/target", self.target_change, 10)
@@ -70,8 +72,8 @@ class TelloNode(Node):
         self.PIDy = PIDController('y')
         self.PIDz = PIDController('z')
         self.PIDyaw = PIDController('yaw')
-        self.PIDx.set_PID_safeopt([0.55, 0, 0.20])
-        self.PIDy.set_PID_safeopt([0.55, 0, 0.20])
+        self.PIDx.set_PID_safeopt([0.55, 0, 0.10])
+        self.PIDy.set_PID_safeopt([0.55, 0, 0.10])
         self.PIDz.set_PID_safeopt([0.55, 0, 0.35])
         self.PIDyaw.set_PID_safeopt([0.80, 0, 0.08])
 
@@ -104,8 +106,7 @@ class TelloNode(Node):
         self.broadcaster.sendTransform(t)
     
     def elaborate_position(self):
-        #euler = self.tello.get_yaw()
-        yaw_d = 0
+        yaw_d = -self.tello.get_yaw()
         target_yaw = calculate_yaw((self.observer_pose[0] - self.tello_pose[0]), (self.observer_pose[1] - self.tello_pose[1]), degrees=True)# calcolo della yaw target in gradi
         yaw = yaw_d*(math.pi)/180
         self.get_logger().info(f"Yaw: {yaw_d}\nObserver jaw: {self.observer_pose[3]}\nTarget yaw: {target_yaw}")
@@ -115,6 +116,7 @@ class TelloNode(Node):
             error_y = float((-(self.target[0]-self.tello_pose[0])*math.sin(yaw) + (self.target[1]-self.tello_pose[1])*math.cos(yaw))*100)
             error_z = float((self.target[2] - self.tello_pose[2])*100)
             error_yaw = float(target_yaw-yaw_d)
+            self.publish_plot(self.tello_pose[0], self.tello_pose[1], yaw_d)
             self.publish_error(error_x, error_y, error_yaw) # error_yaw più rilevante dell'error_z
 
             # compute action
@@ -122,6 +124,7 @@ class TelloNode(Node):
             action_y = -int(self.PIDy.compute_action(error_y)/1.5)
             action_z = int(self.PIDz.compute_action(error_z)/1.5)
             action_yaw = -int(self.PIDyaw.compute_action(error_yaw)*1.5)
+            self.publish_target(self.target[0], self.target[1], target_yaw) 
 
             if abs(action_x) < 3 and abs(action_y) < 3 and abs(action_z) < 3:
                 action_x, action_y, action_z = 0, 0, 0
@@ -219,6 +222,22 @@ class TelloNode(Node):
         error.z = z
         error.id = int(self.id)
         self.error_publisher.publish(error)
+
+    def publish_plot(self, x, y, yaw):
+        plot = TelloStatus()
+        plot.x = float(x)
+        plot.y = float(y)
+        plot.z = float(yaw)
+        plot.id = int(self.id)
+        self.plot_publisher.publish(plot)
+
+    def publish_target(self, x, y, yaw):
+        target = TelloStatus()
+        target.x = float(x)
+        target.y = float(y)
+        target.z = float(yaw)
+        target.id = int(self.id)
+        self.target_publisher.publish(target)
     
     def quaternion_to_euler(self):
         (x, y, z, w) = self.tello_quaternion
@@ -241,8 +260,8 @@ class TelloNode(Node):
 
 def main():
     rclpy.init()
-    node1 = TelloNode("192.168.16.112", 2)
-    node2 = TelloNode("192.168.16.113", 1)
+    node1 = TelloNode("192.168.16.196", 1)
+    node2 = TelloNode("192.168.16.162", 2)
     executor = MultiThreadedExecutor()
     executor.add_node(node1)
     executor.add_node(node2)

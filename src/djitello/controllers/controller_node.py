@@ -209,7 +209,7 @@ class SwarmNode(Node):
         distance = math.sqrt(dx**2 + dy**2)
 
         self.get_logger().info(f"Distance: {distance}")
-        if distance > 2.0:
+        if distance > 1.30:
             return False
         
         angle_to_drone = math.atan2(dy, dx)
