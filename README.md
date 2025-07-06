@@ -14,16 +14,16 @@ Progetto di tesi per il controllo algoritmico di uno **sciame di droni DJI Tello
 └── src          # repository con i file del progetto  
 
 # Come far partire i nodi
-## Build della docker image  
+## 1. Build della docker image  
 <pre><code>chmod +x build.sh 
 ./build.sh </code></pre>
 > Assicurati gli script siano eseguibili (assegna permessi di esecuzione a tutti gli script shell):
 <pre><code>chmod +x run.sh run_l.sh run_t.sh run_c.sh</code></pre>
-## Esegui ogni container in un terminale diverso
+## 2.Esegui ogni container in un terminale diverso
 <pre><code>./run.sh</code></pre>
 > Da eseguire per ogni script shell che crea un container. Ogni container andrà a creare un nodo ROS di riferimento
 
-## Esegui nel container 
+## 3. Esegui nel container 
 <pre><code>colcon builld
 source install/setup.bash
 ros2 run djitello tello</code></pre>
